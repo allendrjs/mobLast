@@ -1,6 +1,6 @@
 package org.rocs.osda.mobile.data.model
 
-data class ViolationRecord(
+data class OffenseRecord(
     val recordId: Long,
     val enrollment: EnrollmentSummary?,
     val employee: EmployeeSummary?,
