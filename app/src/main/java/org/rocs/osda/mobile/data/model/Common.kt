@@ -30,3 +30,9 @@ data class EnrollmentSummary(
     val section: String?,
     val department: String?
 )
+
+data class RecordSummary(
+    val recordId: Long,
+    val offense: OffenseSummary?,
+    val status: String?
+)
