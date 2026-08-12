@@ -5,10 +5,12 @@ import org.rocs.osda.mobile.data.remote.ApiClient
 import org.rocs.osda.mobile.data.remote.AppealApi
 import org.rocs.osda.mobile.data.remote.AuthApi
 import org.rocs.osda.mobile.data.remote.EnrollmentApi
+import org.rocs.osda.mobile.data.remote.GuardianApi
 import org.rocs.osda.mobile.data.remote.RecordApi
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.AuthRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
+import org.rocs.osda.mobile.data.repository.GuardianRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 import org.rocs.osda.mobile.session.SessionManager
 
@@ -23,6 +25,8 @@ class OsdaApplication : Application() {
         private set
     lateinit var enrollmentRepository: EnrollmentRepository
         private set
+    lateinit var guardianRepository: GuardianRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -33,5 +37,6 @@ class OsdaApplication : Application() {
         recordRepository = RecordRepository(retrofit.create(RecordApi::class.java), sessionManager)
         appealRepository = AppealRepository(retrofit.create(AppealApi::class.java), sessionManager)
         enrollmentRepository = EnrollmentRepository(retrofit.create(EnrollmentApi::class.java), sessionManager)
+        guardianRepository = GuardianRepository(retrofit.create(GuardianApi::class.java), sessionManager)
     }
 }
