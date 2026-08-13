@@ -2,26 +2,34 @@ package org.rocs.osda.mobile.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.OsdaApplication
+import org.rocs.osda.mobile.ui.appeal.AppealScreen
+import org.rocs.osda.mobile.ui.appeal.AppealViewModel
 import org.rocs.osda.mobile.ui.dashboard.DashboardScreen
 import org.rocs.osda.mobile.ui.dashboard.DashboardViewModel
 import org.rocs.osda.mobile.ui.login.LoginScreen
 import org.rocs.osda.mobile.ui.login.LoginViewModel
+import org.rocs.osda.mobile.ui.profile.ProfileScreen
+import org.rocs.osda.mobile.ui.profile.ProfileViewModel
+import org.rocs.osda.mobile.ui.records.OffenseDetailScreen
+import org.rocs.osda.mobile.ui.records.OffensesScreen
+import org.rocs.osda.mobile.ui.records.RecordsViewModel
 
 private object Routes {
     const val LOGIN = "login"
@@ -29,6 +37,11 @@ private object Routes {
     const val OFFENSES = "offenses"
     const val APPEALS = "appeals"
     const val PROFILE = "profile"
+    const val APPEAL_RECORD_ARG = "recordId"
+    const val APPEALS_PATTERN = "$APPEALS?$APPEAL_RECORD_ARG={$APPEAL_RECORD_ARG}"
+
+    fun appealsRoute(recordId: Long? = null): String =
+        if (recordId != null) "$APPEALS?$APPEAL_RECORD_ARG=$recordId" else APPEALS
 }
 
 @Composable
@@ -50,29 +63,59 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                         DashboardViewModel(app.sessionManager, app.enrollmentRepository, app.recordRepository, app.appealRepository)
                     },
                     onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } },
-                    onFileAppeal = { navController.navigate(Routes.APPEALS) { tabNavOptions(navController) } }
+                    onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } }
                 )
             }
         }
 
         composable(Routes.OFFENSES) {
-            OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) { ComingSoon("Offenses") }
+            val recordsViewModel = remember { RecordsViewModel(app.recordRepository) }
+            val state by recordsViewModel.uiState.collectAsState()
+            OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
+                if (state.selectedRecord == null) {
+                    OffensesScreen(
+                        viewModel = recordsViewModel,
+                        onOpenOffense = { }
+                    )
+                } else {
+                    OffenseDetailScreen(
+                        viewModel = recordsViewModel,
+                        onBack = { recordsViewModel.clearSelection() },
+                        onFileAppeal = { recordId ->
+                            recordsViewModel.clearSelection()
+                            navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
+                        }
+                    )
+                }
+            }
         }
 
-        composable(Routes.APPEALS) {
-            OsdaTabScaffold(navController, OsdaTab.APPEALS, app) { ComingSoon("Appeals") }
+        composable(
+            route = Routes.APPEALS_PATTERN,
+            arguments = listOf(navArgument(Routes.APPEAL_RECORD_ARG) {
+                type = NavType.LongType
+                defaultValue = -1L
+            })
+        ) { backStackEntry ->
+            val recordId = backStackEntry.arguments?.getLong(Routes.APPEAL_RECORD_ARG)?.takeIf { it > 0 }
+            OsdaTabScaffold(navController, OsdaTab.APPEALS, app) {
+                AppealScreen(
+                    viewModel = remember(recordId) {
+                        AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId)
+                    }
+                )
+            }
         }
 
         composable(Routes.PROFILE) {
-            OsdaTabScaffold(navController, OsdaTab.PROFILE, app) { ComingSoon("Profile") }
+            OsdaTabScaffold(navController, OsdaTab.PROFILE, app) {
+                ProfileScreen(
+                    viewModel = remember {
+                        ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository)
+                    }
+                )
+            }
         }
-    }
-}
-
-@Composable
-private fun ComingSoon(label: String) {
-    Box(modifier = Modifier.padding(24.dp)) {
-        Text("$label - coming soon", style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -90,7 +133,7 @@ private fun OsdaTabScaffold(
                 when (tab) {
                     OsdaTab.DASHBOARD -> navController.navigate(Routes.DASHBOARD) { tabNavOptions(navController) }
                     OsdaTab.OFFENSES -> navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) }
-                    OsdaTab.APPEALS -> navController.navigate(Routes.APPEALS) { tabNavOptions(navController) }
+                    OsdaTab.APPEALS -> navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) }
                     OsdaTab.PROFILE -> navController.navigate(Routes.PROFILE) { tabNavOptions(navController) }
                     OsdaTab.LOGOUT -> scope.launch {
                         app.sessionManager.clear()

@@ -59,4 +59,8 @@ class RecordsViewModel(private val recordRepository: RecordRepository) : ViewMod
     fun selectRecord(record: OffenseRecord) {
         _uiState.value = _uiState.value.copy(selectedRecord = record)
     }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(selectedRecord = null)
+    }
 }
