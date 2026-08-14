@@ -12,17 +12,33 @@ import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 
+enum class AppealFilter { ALL, PENDING, APPROVED, DENIED }
+
 data class AppealUiState(
     val isLoading: Boolean = false,
     val appeals: List<Appeal> = emptyList(),
     val records: List<OffenseRecord> = emptyList(),
     val selectedRecordId: Long? = null,
+    val filter: AppealFilter = AppealFilter.ALL,
     val message: String = "",
     val isSubmitting: Boolean = false,
     val error: String? = null,
     val submitError: String? = null,
     val submitSuccess: Boolean = false
-)
+) {
+    val filteredAppeals: List<Appeal>
+        get() = when (filter) {
+            AppealFilter.ALL -> appeals
+            AppealFilter.PENDING -> appeals.filter { it.status.uppercase() == "PENDING" }
+            AppealFilter.APPROVED -> appeals.filter { it.status.uppercase() == "APPROVED" }
+            AppealFilter.DENIED -> appeals.filter { it.status.uppercase() == "DENIED" }
+        }
+
+    val totalCount: Int get() = appeals.size
+    val pendingCount: Int get() = appeals.count { it.status.uppercase() == "PENDING" }
+    val approvedCount: Int get() = appeals.count { it.status.uppercase() == "APPROVED" }
+    val deniedCount: Int get() = appeals.count { it.status.uppercase() == "DENIED" }
+}
 
 class AppealViewModel(
     private val appealRepository: AppealRepository,
@@ -30,6 +46,8 @@ class AppealViewModel(
     private val enrollmentRepository: EnrollmentRepository,
     initialRecordId: Long? = null
 ) : ViewModel() {
+
+    val isFilingMode: Boolean = initialRecordId != null
 
     private val _uiState = MutableStateFlow(AppealUiState(selectedRecordId = initialRecordId))
     val uiState: StateFlow<AppealUiState> = _uiState.asStateFlow()
@@ -56,8 +74,8 @@ class AppealViewModel(
         }
     }
 
-    fun selectRecord(recordId: Long) {
-        _uiState.value = _uiState.value.copy(selectedRecordId = recordId, submitError = null)
+    fun setFilter(filter: AppealFilter) {
+        _uiState.value = _uiState.value.copy(filter = filter)
     }
 
     fun onMessageChange(value: String) {
@@ -90,7 +108,6 @@ class AppealViewModel(
                     isSubmitting = false,
                     submitSuccess = true,
                     appeals = refreshed,
-                    selectedRecordId = null,
                     message = ""
                 )
             } catch (e: Exception) {
