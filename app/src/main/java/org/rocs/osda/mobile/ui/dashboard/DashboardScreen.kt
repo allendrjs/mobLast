@@ -30,7 +30,8 @@ import org.rocs.osda.mobile.ui.theme.OsdaTokens
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onViewOffenses: () -> Unit,
-    onFileAppeal: () -> Unit
+    onFileAppeal: () -> Unit,
+    onOpenChat: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val enrollment = state.enrollment
@@ -80,7 +81,7 @@ fun DashboardScreen(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 QuickActionRow("View Offenses", "See your disciplinary records", onClick = onViewOffenses)
                 QuickActionRow("File an Appeal", "Request a review of a case", onClick = onFileAppeal)
-                QuickActionRow("Ask the Chatbot", "Coming soon", enabled = false, onClick = {})
+                QuickActionRow("Ask the Chatbot", "Get answers about your offenses and appeals", onClick = onOpenChat)
             }
 
             Text("Recent Activity", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))

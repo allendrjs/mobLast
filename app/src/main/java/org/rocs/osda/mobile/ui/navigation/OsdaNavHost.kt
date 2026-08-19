@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.OsdaApplication
 import org.rocs.osda.mobile.ui.appeal.AppealScreen
 import org.rocs.osda.mobile.ui.appeal.AppealViewModel
+import org.rocs.osda.mobile.ui.chat.ChatScreen
+import org.rocs.osda.mobile.ui.chat.ChatViewModel
 import org.rocs.osda.mobile.ui.dashboard.DashboardScreen
 import org.rocs.osda.mobile.ui.dashboard.DashboardViewModel
 import org.rocs.osda.mobile.ui.login.LoginScreen
@@ -37,6 +39,7 @@ private object Routes {
     const val OFFENSES = "offenses"
     const val APPEALS = "appeals"
     const val PROFILE = "profile"
+    const val CHAT = "chat"
     const val APPEAL_RECORD_ARG = "recordId"
     const val APPEALS_PATTERN = "$APPEALS?$APPEAL_RECORD_ARG={$APPEAL_RECORD_ARG}"
 
@@ -63,9 +66,17 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                         DashboardViewModel(app.sessionManager, app.enrollmentRepository, app.recordRepository, app.appealRepository)
                     },
                     onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } },
-                    onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } }
+                    onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } },
+                    onOpenChat = { navController.navigate(Routes.CHAT) }
                 )
             }
+        }
+
+        composable(Routes.CHAT) {
+            ChatScreen(
+                viewModel = remember { ChatViewModel(app.chatRepository) },
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(Routes.OFFENSES) {
