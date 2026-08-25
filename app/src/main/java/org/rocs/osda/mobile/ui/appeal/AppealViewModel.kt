@@ -89,6 +89,15 @@ class AppealViewModel(
             _uiState.value = state.copy(submitError = "Please select which offense you're appealing.")
             return
         }
+        val alreadyHasActiveAppeal = state.appeals.any {
+            it.record?.recordId == recordId && it.status.uppercase() != "APPROVED"
+        }
+        if (alreadyHasActiveAppeal) {
+            _uiState.value = state.copy(
+                submitError = "You already have an appeal for this offense that hasn't been approved yet."
+            )
+            return
+        }
         if (state.message.isBlank()) {
             _uiState.value = state.copy(submitError = "Please enter a message explaining your appeal.")
             return

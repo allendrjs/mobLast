@@ -1,14 +1,26 @@
 package org.rocs.osda.mobile.ui.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
@@ -80,7 +92,7 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
         }
 
         composable(Routes.OFFENSES) {
-            val recordsViewModel = remember { RecordsViewModel(app.recordRepository) }
+            val recordsViewModel = remember { RecordsViewModel(app.recordRepository, app.appealRepository) }
             val state by recordsViewModel.uiState.collectAsState()
             OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
                 if (state.selectedRecord == null) {
@@ -150,6 +162,36 @@ private fun OsdaTabScaffold(
                         app.sessionManager.clear()
                         navController.navigate(Routes.LOGIN) { popUpTo(0) { inclusive = true } }
                     }
+                }
+            }
+        },
+        floatingActionButton = {
+            // Floating chatbot entry point, visible across every tab -- same
+            // idea as Meta AI's floating bubble in Messenger: always
+            // reachable, distinct gradient color so it stands out from the
+            // rest of the (mostly monochrome) app UI.
+            FloatingActionButton(
+                onClick = { navController.navigate(Routes.CHAT) },
+                shape = CircleShape,
+                containerColor = Color.Transparent,
+                elevation = FloatingActionButtonDefaults.elevation(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color(0xFF4F6BFF), Color(0xFF9B4FFF))
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = "Ask the Chatbot",
+                        tint = Color.White
+                    )
                 }
             }
         }

@@ -67,7 +67,7 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
             ) {
-                StatCard(state.violationsCount.toString(), "Violations", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+                StatCard(state.violationsCount.toString(), "Offenses", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
                 StatCard(state.pendingAppealsCount.toString(), "Pending Appeals", OsdaTokens.amber, Modifier.weight(1f))
                 StatCard(state.enrollment?.studentLevel ?: "—", "Year/Level", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
             }

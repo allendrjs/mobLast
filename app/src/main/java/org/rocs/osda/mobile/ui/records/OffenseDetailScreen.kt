@@ -88,7 +88,8 @@ fun OffenseDetailScreen(
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-            val canAppeal = record.status.uppercase() == "PENDING"
+            val alreadyAppealed = state.hasActiveAppeal(record.recordId)
+            val canAppeal = record.status.uppercase() == "PENDING" && !alreadyAppealed
             PrimaryButton(
                 text = "File an Appeal",
                 enabled = canAppeal,
@@ -96,7 +97,10 @@ fun OffenseDetailScreen(
             )
             if (!canAppeal) {
                 Text(
-                    "This offense is ${record.status.lowercase()} and can no longer be appealed.",
+                    if (alreadyAppealed)
+                        "You already have an appeal for this offense that hasn't been approved yet."
+                    else
+                        "This offense is ${record.status.lowercase()} and can no longer be appealed.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
