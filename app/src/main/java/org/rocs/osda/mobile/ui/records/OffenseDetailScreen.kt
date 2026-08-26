@@ -98,7 +98,9 @@ fun OffenseDetailScreen(
             if (!canAppeal) {
                 Text(
                     if (alreadyAppealed)
-                        "You already have an appeal for this offense that hasn't been approved yet."
+                        "You already have an appeal on file for this offense."
+                    else if (record.status.uppercase() == "APPEALED")
+                        "This offense is already under appeal review."
                     else
                         "This offense is ${record.status.lowercase()} and can no longer be appealed.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

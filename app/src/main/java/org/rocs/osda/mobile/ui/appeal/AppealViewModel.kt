@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.OffenseRecord
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
@@ -68,7 +69,7 @@ class AppealViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Couldn't load your appeals. Please try again."
+                    error = e.toUserMessage("Couldn't load your appeals. Please try again.")
                 )
             }
         }
@@ -89,12 +90,13 @@ class AppealViewModel(
             _uiState.value = state.copy(submitError = "Please select which offense you're appealing.")
             return
         }
-        val alreadyHasActiveAppeal = state.appeals.any {
-            it.record?.recordId == recordId && it.status.uppercase() != "APPROVED"
-        }
-        if (alreadyHasActiveAppeal) {
+        // The backend allows exactly one appeal per offense record, regardless of
+        // that appeal's status (see AppealServiceImpl.submitAppeal) -- so any
+        // existing appeal for this record, approved or not, blocks a resubmission.
+        val alreadyHasAppeal = state.appeals.any { it.record?.recordId == recordId }
+        if (alreadyHasAppeal) {
             _uiState.value = state.copy(
-                submitError = "You already have an appeal for this offense that hasn't been approved yet."
+                submitError = "You already have an appeal on file for this offense."
             )
             return
         }
@@ -122,7 +124,7 @@ class AppealViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isSubmitting = false,
-                    submitError = e.message ?: "Couldn't submit your appeal. Please try again."
+                    submitError = e.toUserMessage("Couldn't submit your appeal. Please try again.")
                 )
             }
         }
