@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.OffenseRecord
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 
@@ -33,13 +34,13 @@ data class RecordsUiState(
     val resolvedCount: Int get() = records.count { it.status.uppercase() == "RESOLVED" }
 
     /**
-     * True if this record already has an appeal that isn't APPROVED yet
-     * (i.e. PENDING or DENIED) -- filing again would create a duplicate
-     * appeal for the same offense. Matches the same rule used on the web
-     * client for consistency across platforms.
+     * True if this record already has an appeal on file, regardless of its
+     * status. The backend allows exactly one appeal per offense record --
+     * filing another would fail with a 409 even if the existing appeal was
+     * already APPROVED or DENIED (see AppealServiceImpl.submitAppeal).
      */
     fun hasActiveAppeal(recordId: Long): Boolean =
-        appeals.any { it.record?.recordId == recordId && it.status.uppercase() != "APPROVED" }
+        appeals.any { it.record?.recordId == recordId }
 }
 
 class RecordsViewModel(
@@ -62,7 +63,7 @@ class RecordsViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Couldn't load your offenses. Please try again."
+                    error = e.toUserMessage("Couldn't load your offenses. Please try again.")
                 )
             }
         }
