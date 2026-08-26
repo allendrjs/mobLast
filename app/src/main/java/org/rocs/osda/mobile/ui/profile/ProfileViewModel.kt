@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Enrollment
 import org.rocs.osda.mobile.data.model.Guardian
+import org.rocs.osda.mobile.data.model.isPending
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.GuardianRepository
@@ -54,12 +56,12 @@ class ProfileViewModel(
                     enrollment = enrollment,
                     guardians = guardians,
                     violationsCount = records.size,
-                    pendingAppealsCount = appeals.count { it.status.uppercase() == "PENDING" || it.status.uppercase() == "UNDER_REVIEW" }
+                    pendingAppealsCount = appeals.count { it.isPending() }
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Couldn't load your profile. Please try again."
+                    error = e.toUserMessage("Couldn't load your profile. Please try again.")
                 )
             }
         }

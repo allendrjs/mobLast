@@ -1,6 +1,7 @@
 package org.rocs.osda.mobile.ui.appeal
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,6 +37,7 @@ import org.rocs.osda.mobile.ui.common.FilterPill
 import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusColors
 import org.rocs.osda.mobile.ui.common.StatusPill
+import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,7 +101,14 @@ private fun FileAppealContent(viewModel: AppealViewModel) {
                 PrimaryButton(
                     text = if (state.isSubmitting) "Submitting..." else "Submit Appeal",
                     enabled = !state.isSubmitting && !state.submitSuccess,
-                    onClick = { showConfirmDialog = true }
+                    onClick = {
+                        // Validate before showing the confirm dialog, not after --
+                        // otherwise a user can confirm "this can't be edited" and
+                        // only then discover their message was required.
+                        if (viewModel.validateBeforeConfirm()) {
+                            showConfirmDialog = true
+                        }
+                    }
                 )
             }
 
@@ -161,7 +173,12 @@ private fun MyAppealsContent(viewModel: AppealViewModel) {
             }
 
             when {
-                state.isLoading && state.appeals.isEmpty() -> Text("Loading...")
+                state.isLoading && state.appeals.isEmpty() -> Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary)
+                }
                 state.error != null -> Text(state.error ?: "Something went wrong.", color = MaterialTheme.colorScheme.error)
                 state.filteredAppeals.isEmpty() -> Text(
                     "No appeals to show.",
@@ -196,7 +213,7 @@ private fun AppealHistoryCard(appeal: Appeal) {
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleSmall
             )
-            StatusPill(appeal.status.replaceFirstChar { it.uppercase() }, fg, bg)
+            StatusPill(appeal.status.toDisplayStatus(), fg, bg)
         }
         Text(
             "Reason:",

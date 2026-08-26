@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.ChatMessage
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.ChatRepository
 
 data class ChatUiState(
@@ -50,7 +51,7 @@ class ChatViewModel(private val chatRepository: ChatRepository) : ViewModel() {
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isSending = false,
-                    error = e.message ?: "Couldn't reach the chatbot. Please try again."
+                    error = e.toUserMessage("Couldn't reach the chatbot. Please try again.")
                 )
             }
         }

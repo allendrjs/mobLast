@@ -23,6 +23,20 @@ private val OsdaGreenBg = Color(0xFFDCF5E3)
 private val OsdaRed = Color(0xFFC22B2B)
 private val OsdaRedBg = Color(0xFFFBDFDF)
 
+// Distinct from OsdaAmber so a record that's actively under appeal reads
+// differently at a glance from one that's merely still PENDING -- both used
+// to share OsdaAmber, which made the two statuses indistinguishable by
+// color in list views (see StatusColors.forRecord).
+private val OsdaBlue = Color(0xFF2B5FC2)
+private val OsdaBlueBg = Color(0xFFDCE8FB)
+
+// Floating chatbot entry point gradient. Kept separate from the rest of the
+// (mostly monochrome) palette on purpose -- it's meant to stand out -- but
+// still centralized here instead of as hardcoded hex literals at the call
+// site.
+private val OsdaChatGradientStart = Color(0xFF4F6BFF)
+private val OsdaChatGradientEnd = Color(0xFF9B4FFF)
+
 private val LightColors = lightColorScheme(
     primary = OsdaPrimary,
     onPrimary = OsdaSurface,
@@ -57,4 +71,9 @@ object OsdaTokens {
     val greenBg = OsdaGreenBg
     val red = OsdaRed
     val redBg = OsdaRedBg
+    val blue = OsdaBlue
+    val blueBg = OsdaBlueBg
+
+    val chatGradientStart = OsdaChatGradientStart
+    val chatGradientEnd = OsdaChatGradientEnd
 }
