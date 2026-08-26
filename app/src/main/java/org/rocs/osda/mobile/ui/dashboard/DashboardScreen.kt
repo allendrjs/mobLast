@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import org.rocs.osda.mobile.ui.common.OsdaCard
 import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusPill
+import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +48,12 @@ fun DashboardScreen(
         onRefresh = viewModel::load,
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+        ) {
             Column(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
                 Column(
                     modifier = Modifier
@@ -66,6 +74,15 @@ fun DashboardScreen(
                         StatusPill(statusText, if (isGood) OsdaTokens.green else OsdaTokens.amber, if (isGood) OsdaTokens.greenBg else OsdaTokens.amberBg)
                     }
                 }
+            }
+
+            state.error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
 
             Row(
@@ -114,7 +131,7 @@ private fun QuickActionRow(title: String, subtitle: String, enabled: Boolean = t
 private fun ActivityRow(item: ActivityItem) {
     val (title, subtitle) = when (item) {
         is ActivityItem.RecordLogged -> "New Offense Logged" to "${item.record.offense.offense}  •  ${item.record.dateOfViolation}"
-        is ActivityItem.AppealUpdated -> "Appeal ${item.appeal.status.lowercase().replaceFirstChar { it.uppercase() }}" to
+        is ActivityItem.AppealUpdated -> "Appeal ${item.appeal.status.toDisplayStatus()}" to
                 "${item.appeal.record?.offense?.offense ?: "Offense"}  •  ${item.appeal.dateProcessed ?: item.appeal.dateFiled ?: ""}"
     }
     OsdaCard {

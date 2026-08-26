@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.OffenseRecord
+import org.rocs.osda.mobile.data.model.isPending
 import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
@@ -30,13 +31,17 @@ data class AppealUiState(
     val filteredAppeals: List<Appeal>
         get() = when (filter) {
             AppealFilter.ALL -> appeals
-            AppealFilter.PENDING -> appeals.filter { it.status.uppercase() == "PENDING" }
+            // Includes UNDER_REVIEW as well as PENDING, matching pendingCount
+            // below and the Dashboard/Profile "Pending Appeals" stat -- an
+            // appeal awaiting a decision should count as pending everywhere,
+            // not just here.
+            AppealFilter.PENDING -> appeals.filter { it.isPending() }
             AppealFilter.APPROVED -> appeals.filter { it.status.uppercase() == "APPROVED" }
             AppealFilter.DENIED -> appeals.filter { it.status.uppercase() == "DENIED" }
         }
 
     val totalCount: Int get() = appeals.size
-    val pendingCount: Int get() = appeals.count { it.status.uppercase() == "PENDING" }
+    val pendingCount: Int get() = appeals.count { it.isPending() }
     val approvedCount: Int get() = appeals.count { it.status.uppercase() == "APPROVED" }
     val deniedCount: Int get() = appeals.count { it.status.uppercase() == "DENIED" }
 }
@@ -83,12 +88,21 @@ class AppealViewModel(
         _uiState.value = _uiState.value.copy(message = value, submitError = null)
     }
 
-    fun submit() {
+    /**
+     * Runs the same checks [submit] does, without actually submitting.
+     * Called before showing the "Submit this appeal?" confirmation dialog so
+     * a blank message or an already-appealed record is caught up front,
+     * instead of the user confirming "this can't be edited" and only then
+     * being told the message was required. Returns true (and leaves
+     * [AppealUiState.submitError] untouched) if it's safe to show the
+     * dialog; returns false and sets submitError otherwise.
+     */
+    fun validateBeforeConfirm(): Boolean {
         val state = _uiState.value
         val recordId = state.selectedRecordId
         if (recordId == null) {
             _uiState.value = state.copy(submitError = "Please select which offense you're appealing.")
-            return
+            return false
         }
         // The backend allows exactly one appeal per offense record, regardless of
         // that appeal's status (see AppealServiceImpl.submitAppeal) -- so any
@@ -98,17 +112,24 @@ class AppealViewModel(
             _uiState.value = state.copy(
                 submitError = "You already have an appeal on file for this offense."
             )
-            return
+            return false
         }
         if (state.message.isBlank()) {
             _uiState.value = state.copy(submitError = "Please enter a message explaining your appeal.")
-            return
+            return false
         }
-        val currentEnrollmentId = enrollmentId
-        if (currentEnrollmentId == null) {
+        if (enrollmentId == null) {
             _uiState.value = state.copy(submitError = "Couldn't determine your current enrollment. Please try again later.")
-            return
+            return false
         }
+        return true
+    }
+
+    fun submit() {
+        if (!validateBeforeConfirm()) return
+        val state = _uiState.value
+        val recordId = state.selectedRecordId ?: return
+        val currentEnrollmentId = enrollmentId ?: return
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, submitError = null)

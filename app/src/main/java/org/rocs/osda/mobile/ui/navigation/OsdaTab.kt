@@ -9,9 +9,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class OsdaTab(val route: String, val label: String, val icon: ImageVector) {
-    PROFILE("profile", "Profile", Icons.Filled.Person),
-    OFFENSES("offenses", "Offenses", Icons.Filled.Assignment),
     DASHBOARD("dashboard", "Dashboard", Icons.Filled.Dashboard),
+    OFFENSES("offenses", "Offenses", Icons.Filled.Assignment),
     APPEALS("appeals", "Appeal", Icons.Filled.Gavel),
+    PROFILE("profile", "Profile", Icons.Filled.Person),
     LOGOUT("logout", "Logout", Icons.AutoMirrored.Filled.Logout)
 }
