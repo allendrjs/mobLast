@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -121,27 +122,41 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
 @Composable
 private fun MessageBubble(message: ChatMessage) {
     val isUser = message.role == "user"
+    val bubbleWidth = if (isUser) Modifier.widthIn(max = 260.dp) else Modifier.fillMaxWidth(0.92f)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         Box(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .background(
-                    color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(
-                        topStart = 14.dp,
-                        topEnd = 14.dp,
-                        bottomStart = if (isUser) 14.dp else 2.dp,
-                        bottomEnd = if (isUser) 2.dp else 14.dp
-                    )
+            modifier = bubbleWidth
+                .then(
+                    if (isUser) {
+                        Modifier.background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(
+                                topStart = 14.dp,
+                                topEnd = 14.dp,
+                                bottomStart = 14.dp,
+                                bottomEnd = 2.dp
+                            )
+                        )
+                    } else {
+                        val shape = RoundedCornerShape(
+                            topStart = 14.dp,
+                            topEnd = 14.dp,
+                            bottomStart = 2.dp,
+                            bottomEnd = 14.dp
+                        )
+                        Modifier
+                            .background(color = MaterialTheme.colorScheme.surface, shape = shape)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, shape)
+                    }
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Text(
-                message.content,
+            MarkdownText(
+                text = message.content,
                 color = if (isUser) Color.White else MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyMedium
             )
