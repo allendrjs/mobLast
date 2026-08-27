@@ -1,15 +1,21 @@
 package org.rocs.osda.mobile.ui.navigation
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -23,10 +29,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -34,6 +44,7 @@ import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
@@ -52,6 +63,8 @@ import org.rocs.osda.mobile.ui.profile.ProfileViewModel
 import org.rocs.osda.mobile.ui.records.OffenseDetailScreen
 import org.rocs.osda.mobile.ui.records.OffensesScreen
 import org.rocs.osda.mobile.ui.records.RecordsViewModel
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private object Routes {
     const val LOGIN = "login"
@@ -67,110 +80,214 @@ private object Routes {
         if (recordId != null) "$APPEALS?$APPEAL_RECORD_ARG=$recordId" else APPEALS
 }
 
+// Below this drag distance (in px), a touch-and-release on the chat bubble is
+// treated as a tap rather than a drag -- otherwise the button would never be
+// clickable, since detectDragGestures reports even a stationary touch as a
+// (near-zero) drag.
+private const val DRAG_CLICK_THRESHOLD_PX = 24f
+
 @Composable
 fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = rememberNavController()) {
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
-        composable(Routes.LOGIN) { backStackEntry ->
-            val viewModel: LoginViewModel = viewModel(
-                viewModelStoreOwner = backStackEntry,
-                factory = viewModelFactory { initializer { LoginViewModel(app.authRepository) } }
-            )
-            LoginScreen(
-                viewModel = viewModel,
-                onLoginSuccess = {
-                    navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.LOGIN) { inclusive = true } }
-                }
-            )
-        }
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
 
-        composable(Routes.DASHBOARD) { backStackEntry ->
-            OsdaTabScaffold(navController, OsdaTab.DASHBOARD, app) {
-                val viewModel: DashboardViewModel = viewModel(
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(navController = navController, startDestination = Routes.LOGIN) {
+            composable(Routes.LOGIN) { backStackEntry ->
+                val viewModel: LoginViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
-                    factory = viewModelFactory {
-                        initializer {
-                            DashboardViewModel(app.sessionManager, app.enrollmentRepository, app.recordRepository, app.appealRepository)
-                        }
+                    factory = viewModelFactory { initializer { LoginViewModel(app.authRepository) } }
+                )
+                LoginScreen(
+                    viewModel = viewModel,
+                    onLoginSuccess = {
+                        navController.navigate(Routes.DASHBOARD) { popUpTo(Routes.LOGIN) { inclusive = true } }
                     }
                 )
-                DashboardScreen(
-                    viewModel = viewModel,
-                    onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } },
-                    onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } },
-                    onOpenChat = { navController.navigate(Routes.CHAT) }
-                )
             }
-        }
 
-        composable(Routes.CHAT) { backStackEntry ->
-            val viewModel: ChatViewModel = viewModel(
-                viewModelStoreOwner = backStackEntry,
-                factory = viewModelFactory { initializer { ChatViewModel(app.chatRepository) } }
-            )
-            ChatScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Routes.OFFENSES) { backStackEntry ->
-            val recordsViewModel: RecordsViewModel = viewModel(
-                viewModelStoreOwner = backStackEntry,
-                factory = viewModelFactory { initializer { RecordsViewModel(app.recordRepository, app.appealRepository) } }
-            )
-            val state by recordsViewModel.uiState.collectAsState()
-            OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
-                if (state.selectedRecord == null) {
-                    OffensesScreen(viewModel = recordsViewModel)
-                } else {
-                    OffenseDetailScreen(
-                        viewModel = recordsViewModel,
-                        onBack = { recordsViewModel.clearSelection() },
-                        onFileAppeal = { recordId ->
-                            recordsViewModel.clearSelection()
-                            navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
+            composable(Routes.DASHBOARD) { backStackEntry ->
+                OsdaTabScaffold(navController, OsdaTab.DASHBOARD, app) {
+                    val viewModel: DashboardViewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        factory = viewModelFactory {
+                            initializer {
+                                DashboardViewModel(app.sessionManager, app.enrollmentRepository, app.recordRepository, app.appealRepository)
+                            }
                         }
+                    )
+                    DashboardScreen(
+                        viewModel = viewModel,
+                        onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } },
+                        onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } },
+                        onOpenChat = { navController.navigate(Routes.CHAT) }
                     )
                 }
             }
-        }
 
-        composable(
-            route = Routes.APPEALS_PATTERN,
-            arguments = listOf(navArgument(Routes.APPEAL_RECORD_ARG) {
-                type = NavType.LongType
-                defaultValue = -1L
-            })
-        ) { backStackEntry ->
-            val recordId = backStackEntry.arguments?.getLong(Routes.APPEAL_RECORD_ARG)?.takeIf { it > 0 }
-            OsdaTabScaffold(navController, OsdaTab.APPEALS, app) {
-                // Keyed on recordId so navigating between different offenses' appeal
-                // screens (which reuses this back stack entry under launchSingleTop)
-                // still gets a fresh ViewModel instead of a stale cached one.
-                val viewModel: AppealViewModel = viewModel(
+            composable(Routes.CHAT) { backStackEntry ->
+                val viewModel: ChatViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
-                    key = "appeal-$recordId",
-                    factory = viewModelFactory {
-                        initializer { AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId) }
-                    }
+                    factory = viewModelFactory { initializer { ChatViewModel(app.chatRepository) } }
                 )
-                AppealScreen(viewModel = viewModel)
+                ChatScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.OFFENSES) { backStackEntry ->
+                val recordsViewModel: RecordsViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = viewModelFactory { initializer { RecordsViewModel(app.recordRepository, app.appealRepository) } }
+                )
+                val state by recordsViewModel.uiState.collectAsState()
+                OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
+                    if (state.selectedRecord == null) {
+                        OffensesScreen(viewModel = recordsViewModel)
+                    } else {
+                        OffenseDetailScreen(
+                            viewModel = recordsViewModel,
+                            onBack = { recordsViewModel.clearSelection() },
+                            onFileAppeal = { recordId ->
+                                recordsViewModel.clearSelection()
+                                navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
+                            }
+                        )
+                    }
+                }
+            }
+
+            composable(
+                route = Routes.APPEALS_PATTERN,
+                arguments = listOf(navArgument(Routes.APPEAL_RECORD_ARG) {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                })
+            ) { backStackEntry ->
+                val recordId = backStackEntry.arguments?.getLong(Routes.APPEAL_RECORD_ARG)?.takeIf { it > 0 }
+                OsdaTabScaffold(navController, OsdaTab.APPEALS, app) {
+                    // Keyed on recordId so navigating between different offenses' appeal
+                    // screens (which reuses this back stack entry under launchSingleTop)
+                    // still gets a fresh ViewModel instead of a stale cached one.
+                    val viewModel: AppealViewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "appeal-$recordId",
+                        factory = viewModelFactory {
+                            initializer { AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId) }
+                        }
+                    )
+                    AppealScreen(viewModel = viewModel)
+                }
+            }
+
+            composable(Routes.PROFILE) { backStackEntry ->
+                OsdaTabScaffold(navController, OsdaTab.PROFILE, app) {
+                    val viewModel: ProfileViewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        factory = viewModelFactory {
+                            initializer {
+                                ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository)
+                            }
+                        }
+                    )
+                    ProfileScreen(viewModel = viewModel)
+                }
             }
         }
 
-        composable(Routes.PROFILE) { backStackEntry ->
-            OsdaTabScaffold(navController, OsdaTab.PROFILE, app) {
-                val viewModel: ProfileViewModel = viewModel(
-                    viewModelStoreOwner = backStackEntry,
-                    factory = viewModelFactory {
-                        initializer {
-                            ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository)
+        // Free-floating chatbot entry point, similar to iOS's AssistiveTouch
+        // bubble -- persists on top of every screen except Login (no session
+        // yet) and Chat itself (already there), and can be dragged anywhere
+        // on screen rather than being pinned to one corner. The drag state
+        // lives in this always-composed BoxWithConstraints (not inside the
+        // conditionally-shown bubble itself) so the position survives
+        // hiding/showing as you navigate into and out of Chat.
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val density = LocalDensity.current
+            val fabSizePx = with(density) { 56.dp.toPx() }
+            val marginPx = with(density) { 16.dp.toPx() }
+
+            val minX = marginPx
+            val maxX = (with(density) { maxWidth.toPx() } - fabSizePx - marginPx).coerceAtLeast(minX)
+            val minY = marginPx
+            val maxY = (with(density) { maxHeight.toPx() } - fabSizePx - marginPx).coerceAtLeast(minY)
+
+            val offsetX = remember { Animatable(maxX) }
+            var offsetY by remember {
+                mutableStateOf((maxY - with(density) { 96.dp.toPx() }).coerceIn(minY, maxY))
+            }
+
+            if (currentRoute != null && currentRoute != Routes.LOGIN && currentRoute != Routes.CHAT) {
+                DraggableChatFab(
+                    offsetX = offsetX,
+                    offsetY = offsetY,
+                    onOffsetYChange = { offsetY = it },
+                    minX = minX,
+                    maxX = maxX,
+                    minY = minY,
+                    maxY = maxY,
+                    onClick = { navController.navigate(Routes.CHAT) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DraggableChatFab(
+    offsetX: Animatable<Float, AnimationVector1D>,
+    offsetY: Float,
+    onOffsetYChange: (Float) -> Unit,
+    minX: Float,
+    maxX: Float,
+    minY: Float,
+    maxY: Float,
+    onClick: () -> Unit
+) {
+    var dragDistance by remember { mutableStateOf(0f) }
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.roundToInt()) }
+            .size(56.dp)
+            .pointerInput(minX, maxX, minY, maxY) {
+                detectDragGestures(
+                    onDragStart = { dragDistance = 0f },
+                    onDragCancel = { dragDistance = 0f },
+                    onDragEnd = {
+                        if (dragDistance < DRAG_CLICK_THRESHOLD_PX) {
+                            onClick()
+                        } else {
+                            // Snap to whichever edge it's closest to, like
+                            // iOS's AssistiveTouch bubble settling against
+                            // the side of the screen when you let go.
+                            val target = if (offsetX.value < (minX + maxX) / 2) minX else maxX
+                            scope.launch {
+                                offsetX.animateTo(
+                                    targetValue = target,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                                )
+                            }
                         }
                     }
-                )
-                ProfileScreen(viewModel = viewModel)
+                ) { change, dragAmount ->
+                    change.consume()
+                    dragDistance += abs(dragAmount.x) + abs(dragAmount.y)
+                    scope.launch { offsetX.snapTo((offsetX.value + dragAmount.x).coerceIn(minX, maxX)) }
+                    onOffsetYChange((offsetY + dragAmount.y).coerceIn(minY, maxY))
+                }
             }
-        }
+            .shadow(elevation = 6.dp, shape = CircleShape)
+            .background(color = OsdaTokens.blue, shape = CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.AutoAwesome,
+            contentDescription = "Ask the Chatbot",
+            tint = Color.White
+        )
     }
 }
 
@@ -213,36 +330,6 @@ private fun OsdaTabScaffold(
                     OsdaTab.APPEALS -> navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) }
                     OsdaTab.PROFILE -> navController.navigate(Routes.PROFILE) { tabNavOptions(navController) }
                     OsdaTab.LOGOUT -> showLogoutConfirm = true
-                }
-            }
-        },
-        floatingActionButton = {
-            // Floating chatbot entry point, visible across every tab -- same
-            // idea as Meta AI's floating bubble in Messenger: always
-            // reachable, distinct gradient color so it stands out from the
-            // rest of the (mostly monochrome) app UI.
-            FloatingActionButton(
-                onClick = { navController.navigate(Routes.CHAT) },
-                shape = CircleShape,
-                containerColor = Color.Transparent,
-                elevation = FloatingActionButtonDefaults.elevation(6.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(OsdaTokens.chatGradientStart, OsdaTokens.chatGradientEnd)
-                            ),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AutoAwesome,
-                        contentDescription = "Ask the Chatbot",
-                        tint = Color.White
-                    )
                 }
             }
         }
