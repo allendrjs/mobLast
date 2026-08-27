@@ -1,8 +1,8 @@
 package org.rocs.osda.mobile.ui.navigation
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
+import android.annotation.SuppressLint
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -86,6 +86,7 @@ private object Routes {
 // is treated as a tap (fires onClick) rather than a drag (snaps to an edge).
 private const val DRAG_CLICK_THRESHOLD_PX = 24f
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = rememberNavController()) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -213,13 +214,13 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
             val minY = marginPx
             val maxY = (with(density) { maxHeight.toPx() } - fabSizePx - marginPx).coerceAtLeast(minY)
 
-            // Held as MutableState/Animatable objects (not unwrapped Float +
-            // callback) so the drag handler below can read/write the *live*
-            // value at any moment. An unwrapped value passed as a plain
-            // parameter gets frozen at whatever it was when this gesture
-            // coroutine was launched, which was the root cause of the FAB
-            // snapping back to a stale position after dragging.
-            val offsetX = remember { Animatable(maxX) }
+            // Held as MutableState objects (not unwrapped Float + callback)
+            // so the drag handler below can read/write the *live* value at
+            // any moment. An unwrapped value passed as a plain parameter
+            // gets frozen at whatever it was when this gesture coroutine
+            // was launched, which was the root cause of the FAB snapping
+            // back to a stale position after dragging.
+            val offsetX = remember { mutableStateOf(maxX) }
             val offsetY = remember {
                 mutableStateOf((maxY - with(density) { 96.dp.toPx() }).coerceIn(minY, maxY))
             }
@@ -241,7 +242,7 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
 
 @Composable
 private fun DraggableChatFab(
-    offsetX: Animatable<Float, AnimationVector1D>,
+    offsetX: MutableState<Float>,
     offsetY: MutableState<Float>,
     minX: Float,
     maxX: Float,
@@ -249,6 +250,16 @@ private fun DraggableChatFab(
     maxY: Float,
     onClick: () -> Unit
 ) {
+    // Used only for the settle-to-edge animation after a drag, launched
+    // *outside* the pointer-input gesture coroutine below. AwaitPointerEventScope
+    // is a restricted-suspension scope: code inside awaitEachGesture can only
+    // call suspend functions that belong to that scope itself (awaitPointerEvent,
+    // etc.), not arbitrary suspend functions like Animatable.animateTo/snapTo or
+    // the animate() helper -- that's what "Restricted suspending functions can
+    // invoke member or extension suspending functions only on their restricted
+    // receiver" was flagging when those were called directly inside the gesture.
+    val scope = rememberCoroutineScope()
+
     Box(
         modifier = Modifier
             .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
@@ -274,13 +285,12 @@ private fun DraggableChatFab(
                         if (dragAmount.x != 0f || dragAmount.y != 0f) {
                             change.consume()
                             totalDrag += abs(dragAmount.x) + abs(dragAmount.y)
-                            // Suspend calls made directly in this gesture
-                            // coroutine (not via a separately launched
-                            // coroutine) so each update finishes before the
-                            // next pointer event is processed -- otherwise
-                            // reading offsetX.value right after the loop
-                            // ends can race ahead of the last queued update.
-                            offsetX.snapTo((offsetX.value + dragAmount.x).coerceIn(minX, maxX))
+                            // Plain state writes, not suspend calls -- safe
+                            // to make directly inside this restricted
+                            // pointer-input coroutine, and always reflect
+                            // the true live position the instant the loop
+                            // below exits.
+                            offsetX.value = (offsetX.value + dragAmount.x).coerceIn(minX, maxX)
                             offsetY.value = (offsetY.value + dragAmount.y).coerceIn(minY, maxY)
                         }
                     }
@@ -290,12 +300,18 @@ private fun DraggableChatFab(
                     } else {
                         // Snap to whichever edge it's closest to, like
                         // iOS's AssistiveTouch bubble settling against the
-                        // side of the screen when you let go.
-                        val target = if (offsetX.value < (minX + maxX) / 2) minX else maxX
-                        offsetX.animateTo(
-                            targetValue = target,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                        )
+                        // side of the screen when you let go. Animated in a
+                        // separate, unrestricted coroutine (see the scope
+                        // comment above).
+                        val start = offsetX.value
+                        val target = if (start < (minX + maxX) / 2) minX else maxX
+                        scope.launch {
+                            animate(
+                                initialValue = start,
+                                targetValue = target,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                            ) { value, _ -> offsetX.value = value }
+                        }
                     }
                 }
             }
