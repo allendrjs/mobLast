@@ -12,6 +12,13 @@ import retrofit2.HttpException
  * Retrofit's HttpException.message is just "HTTP 409 Conflict" -- it never
  * contains that body. Without this, callers that display e.message end up
  * showing the raw status line instead of the real, user-facing reason.
+ *
+ * For anything that ISN'T a structured API error -- a dropped connection,
+ * a timeout, DNS failure, etc. -- we deliberately never show the raw
+ * exception message (e.g. "Software caused connection abort", "Unable to
+ * resolve host") to the user. Those are implementation details, not
+ * something a student can act on; the caller-supplied fallback is always
+ * used instead.
  */
 private data class ApiErrorBody(val message: String?)
 
@@ -27,5 +34,5 @@ fun Throwable.toUserMessage(fallback: String): String {
             return parsedMessage
         }
     }
-    return message?.takeIf { it.isNotBlank() } ?: fallback
+    return fallback
 }
