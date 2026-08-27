@@ -5,7 +5,8 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,10 +82,8 @@ private object Routes {
         if (recordId != null) "$APPEALS?$APPEAL_RECORD_ARG=$recordId" else APPEALS
 }
 
-// Below this drag distance (in px), a touch-and-release on the chat bubble is
-// treated as a tap rather than a drag -- otherwise the button would never be
-// clickable, since detectDragGestures reports even a stationary touch as a
-// (near-zero) drag.
+// Below this total movement (in px), a touch-and-release on the chat bubble
+// is treated as a tap (fires onClick) rather than a drag (snaps to an edge).
 private const val DRAG_CLICK_THRESHOLD_PX = 24f
 
 @Composable
@@ -213,8 +213,14 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
             val minY = marginPx
             val maxY = (with(density) { maxHeight.toPx() } - fabSizePx - marginPx).coerceAtLeast(minY)
 
+            // Held as MutableState/Animatable objects (not unwrapped Float +
+            // callback) so the drag handler below can read/write the *live*
+            // value at any moment. An unwrapped value passed as a plain
+            // parameter gets frozen at whatever it was when this gesture
+            // coroutine was launched, which was the root cause of the FAB
+            // snapping back to a stale position after dragging.
             val offsetX = remember { Animatable(maxX) }
-            var offsetY by remember {
+            val offsetY = remember {
                 mutableStateOf((maxY - with(density) { 96.dp.toPx() }).coerceIn(minY, maxY))
             }
 
@@ -222,7 +228,6 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 DraggableChatFab(
                     offsetX = offsetX,
                     offsetY = offsetY,
-                    onOffsetYChange = { offsetY = it },
                     minX = minX,
                     maxX = maxX,
                     minY = minY,
@@ -237,46 +242,61 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
 @Composable
 private fun DraggableChatFab(
     offsetX: Animatable<Float, AnimationVector1D>,
-    offsetY: Float,
-    onOffsetYChange: (Float) -> Unit,
+    offsetY: MutableState<Float>,
     minX: Float,
     maxX: Float,
     minY: Float,
     maxY: Float,
     onClick: () -> Unit
 ) {
-    var dragDistance by remember { mutableStateOf(0f) }
-    val scope = rememberCoroutineScope()
-
     Box(
         modifier = Modifier
-            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.roundToInt()) }
+            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
             .size(56.dp)
             .pointerInput(minX, maxX, minY, maxY) {
-                detectDragGestures(
-                    onDragStart = { dragDistance = 0f },
-                    onDragCancel = { dragDistance = 0f },
-                    onDragEnd = {
-                        if (dragDistance < DRAG_CLICK_THRESHOLD_PX) {
-                            onClick()
-                        } else {
-                            // Snap to whichever edge it's closest to, like
-                            // iOS's AssistiveTouch bubble settling against
-                            // the side of the screen when you let go.
-                            val target = if (offsetX.value < (minX + maxX) / 2) minX else maxX
-                            scope.launch {
-                                offsetX.animateTo(
-                                    targetValue = target,
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                                )
-                            }
+                // Hand-rolled instead of detectDragGestures: that function
+                // only calls onDragStart/onDragEnd once the touch has
+                // already moved past the system touch-slop, so a plain tap
+                // (down, no movement, up) never fires onDragEnd at all --
+                // that was silently swallowing every tap on the bubble.
+                // Tracking the gesture manually from the first down event
+                // lets a small/no movement fall through to onClick().
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    var totalDrag = 0f
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+
+                        val dragAmount = change.position - change.previousPosition
+                        if (dragAmount.x != 0f || dragAmount.y != 0f) {
+                            change.consume()
+                            totalDrag += abs(dragAmount.x) + abs(dragAmount.y)
+                            // Suspend calls made directly in this gesture
+                            // coroutine (not via a separately launched
+                            // coroutine) so each update finishes before the
+                            // next pointer event is processed -- otherwise
+                            // reading offsetX.value right after the loop
+                            // ends can race ahead of the last queued update.
+                            offsetX.snapTo((offsetX.value + dragAmount.x).coerceIn(minX, maxX))
+                            offsetY.value = (offsetY.value + dragAmount.y).coerceIn(minY, maxY)
                         }
                     }
-                ) { change, dragAmount ->
-                    change.consume()
-                    dragDistance += abs(dragAmount.x) + abs(dragAmount.y)
-                    scope.launch { offsetX.snapTo((offsetX.value + dragAmount.x).coerceIn(minX, maxX)) }
-                    onOffsetYChange((offsetY + dragAmount.y).coerceIn(minY, maxY))
+
+                    if (totalDrag < DRAG_CLICK_THRESHOLD_PX) {
+                        onClick()
+                    } else {
+                        // Snap to whichever edge it's closest to, like
+                        // iOS's AssistiveTouch bubble settling against the
+                        // side of the screen when you let go.
+                        val target = if (offsetX.value < (minX + maxX) / 2) minX else maxX
+                        offsetX.animateTo(
+                            targetValue = target,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                        )
+                    }
                 }
             }
             .shadow(elevation = 6.dp, shape = CircleShape)
