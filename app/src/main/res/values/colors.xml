@@ -1,3 +1,5 @@
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Matches OsdaBackground in Theme.kt; overridden in values-night for dark mode. -->
+    <color name="window_background">#FFF7F5F2</color>
 </resources>

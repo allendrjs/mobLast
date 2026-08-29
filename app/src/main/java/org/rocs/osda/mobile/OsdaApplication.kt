@@ -15,9 +15,12 @@ import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.GuardianRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 import org.rocs.osda.mobile.session.SessionManager
+import org.rocs.osda.mobile.session.ThemePreferences
 
 class OsdaApplication : Application() {
     lateinit var sessionManager: SessionManager
+        private set
+    lateinit var themePreferences: ThemePreferences
         private set
     lateinit var authRepository: AuthRepository
         private set
@@ -35,6 +38,7 @@ class OsdaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         sessionManager = SessionManager(this)
+        themePreferences = ThemePreferences(this)
         val retrofit = ApiClient.create(sessionManager)
 
         authRepository = AuthRepository(retrofit.create(AuthApi::class.java), sessionManager)

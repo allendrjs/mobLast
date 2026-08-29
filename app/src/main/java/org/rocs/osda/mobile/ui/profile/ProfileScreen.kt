@@ -14,6 +14,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -34,6 +36,7 @@ import org.rocs.osda.mobile.ui.theme.OsdaTokens
 @Composable
 fun ProfileScreen(viewModel: ProfileViewModel) {
     val state by viewModel.uiState.collectAsState()
+    val darkMode by viewModel.darkMode.collectAsState()
     val person = state.enrollment?.student?.person
     val name = person?.fullName ?: state.studentId ?: "Student"
     val initials = name.split(" ").filter { it.isNotBlank() }.take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("")
@@ -77,6 +80,27 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
                 StatCard(state.violationsCount.toString(), "Offenses", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
                 StatCard(state.pendingAppealsCount.toString(), "Pending Appeals", OsdaTokens.amber, Modifier.weight(1f))
                 StatCard(state.enrollment?.studentLevel ?: "—", "Year/Level", MaterialTheme.colorScheme.onBackground, Modifier.weight(1f))
+            }
+
+            Text("Appearance", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
+            OsdaCard(modifier = Modifier.padding(bottom = 20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Dark Mode",
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f).padding(end = 12.dp)
+                    )
+                    Switch(
+                        checked = darkMode,
+                        onCheckedChange = viewModel::setDarkMode,
+                        colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
 
             Text("Personal Information", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
