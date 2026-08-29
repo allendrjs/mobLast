@@ -188,7 +188,7 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                         viewModelStoreOwner = backStackEntry,
                         factory = viewModelFactory {
                             initializer {
-                                ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository)
+                                ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository, app.themePreferences)
                             }
                         }
                     )

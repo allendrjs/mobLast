@@ -1,10 +1,11 @@
 package org.rocs.osda.mobile.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -71,16 +72,27 @@ private val DarkColors = darkColorScheme(
     error = OsdaRed
 )
 
+// Deliberately NOT sourced from isSystemInDarkTheme() -- dark mode here is
+// an explicit, app-only preference (the Appearance switch on Profile,
+// backed by ThemePreferences/DataStore), independent of whatever the
+// device itself is set to. OsdaMobileTheme provides this so anything
+// further down the tree (like OsdaTokens.navInactive below) can read the
+// *app's* dark-mode state without reaching for the system setting.
+private val LocalOsdaDarkTheme = staticCompositionLocalOf { false }
+
 /**
- * Follows the system dark-mode setting by default. Every screen already
- * pulls its colors from MaterialTheme.colorScheme (background/surface/
- * onBackground/onSurfaceVariant/outline) rather than hardcoded hex, so
- * switching the active ColorScheme here is enough to re-theme the whole
- * app -- no per-screen changes needed.
+ * darkTheme is caller-supplied (from ThemePreferences), not derived from
+ * the system. Every screen already pulls its colors from
+ * MaterialTheme.colorScheme (background/surface/onBackground/
+ * onSurfaceVariant/outline) rather than hardcoded hex, so switching the
+ * active ColorScheme here is enough to re-theme the whole app -- no
+ * per-screen changes needed.
  */
 @Composable
-fun OsdaMobileTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
+fun OsdaMobileTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalOsdaDarkTheme provides darkTheme) {
+        MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
+    }
 }
 
 object OsdaTokens {
@@ -91,7 +103,7 @@ object OsdaTokens {
     val inputRadius = 10.dp
 
     val navInactive: Color
-        @Composable get() = if (isSystemInDarkTheme()) OsdaNavInactiveDark else OsdaNavInactive
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaNavInactiveDark else OsdaNavInactive
     val primaryMuted = OsdaPrimaryMuted
 
     val amber = OsdaAmber
