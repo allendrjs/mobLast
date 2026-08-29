@@ -89,10 +89,14 @@ fun ProfileScreen(viewModel: ProfileViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    // weight(1f) so this column is constrained to the space
+                    // left after the Switch, instead of taking its own
+                    // unconstrained width -- without it the subtitle ran
+                    // full-width and got clipped/overlapped behind the Switch.
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                         Text("Dark Mode", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            "Switches the app's theme. Doesn't follow your device setting.",
+                            "App only, not your device.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.labelSmall
                         )

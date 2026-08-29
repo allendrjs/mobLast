@@ -19,12 +19,10 @@ private val OsdaHeading = Color(0xFF1A1A2E)
 private val OsdaMuted = Color(0xFF6D6D7F)
 private val OsdaNavInactive = Color(0xFF6E6E7D)
 
-// Dark-theme surface tones. Primary/onPrimary and every semantic status
-// color below (amber/green/red/blue) are deliberately left unchanged
-// between themes -- they're each self-contained fg/bg pairs (badges,
-// pills, the brand-colored header block) that already carry their own
-// contrast regardless of the surrounding page, so only the structural
-// background/surface/text tones actually need a dark variant.
+// Primary/onPrimary stay constant between themes -- primary is only ever
+// used as a solid-fill background (the Dashboard welcome card, chat bubbles,
+// buttons) with onPrimary as the text on top of it, so it doesn't need a
+// dark variant.
 private val OsdaBackgroundDark = Color(0xFF121218)
 private val OsdaSurfaceDark = Color(0xFF1B1B22)
 private val OsdaBorderDark = Color(0xFF2E2E38)
@@ -32,12 +30,28 @@ private val OsdaHeadingDark = Color(0xFFF2F1F7)
 private val OsdaMutedDark = Color(0xFFA6A6B5)
 private val OsdaNavInactiveDark = Color(0xFF8B8B9C)
 
+// The status colors below DO need dark variants, unlike primary -- they're
+// used two different ways: as a chip's fg+bg pair (StatusPill), but also as
+// a bare foreground color painted directly on the page's own surface
+// (StatCard's colored number, e.g. "1 Pending Appeals" in amber). The light
+// variants are dark, muted tones meant to read as text on a light page;
+// used as-is on a dark surface they're nearly invisible. Dark mode gets a
+// brighter foreground paired with a correspondingly darker, tinted
+// background so the StatusPill chip keeps its own internal contrast too.
 private val OsdaAmber = Color(0xFF916515)
 private val OsdaAmberBg = Color(0xFFFDF1D6)
+private val OsdaAmberDark = Color(0xFFFFC65C)
+private val OsdaAmberBgDark = Color(0xFF3A2E10)
+
 private val OsdaGreen = Color(0xFF1A7945)
 private val OsdaGreenBg = Color(0xFFDCF5E3)
+private val OsdaGreenDark = Color(0xFF6FE3A0)
+private val OsdaGreenBgDark = Color(0xFF123822)
+
 private val OsdaRed = Color(0xFFC22B2B)
 private val OsdaRedBg = Color(0xFFFBDFDF)
+private val OsdaRedDark = Color(0xFFFF8A8A)
+private val OsdaRedBgDark = Color(0xFF3A1414)
 
 // Distinct from OsdaAmber so a record that's actively under appeal reads
 // differently at a glance from one that's merely still PENDING -- both used
@@ -45,6 +59,8 @@ private val OsdaRedBg = Color(0xFFFBDFDF)
 // color in list views (see StatusColors.forRecord).
 private val OsdaBlue = Color(0xFF2B5FC2)
 private val OsdaBlueBg = Color(0xFFDCE8FB)
+private val OsdaBlueDark = Color(0xFF7FAFFF)
+private val OsdaBlueBgDark = Color(0xFF16233A)
 
 private val LightColors = lightColorScheme(
     primary = OsdaPrimary,
@@ -106,12 +122,20 @@ object OsdaTokens {
         @Composable get() = if (LocalOsdaDarkTheme.current) OsdaNavInactiveDark else OsdaNavInactive
     val primaryMuted = OsdaPrimaryMuted
 
-    val amber = OsdaAmber
-    val amberBg = OsdaAmberBg
-    val green = OsdaGreen
-    val greenBg = OsdaGreenBg
-    val red = OsdaRed
-    val redBg = OsdaRedBg
-    val blue = OsdaBlue
-    val blueBg = OsdaBlueBg
+    val amber: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaAmberDark else OsdaAmber
+    val amberBg: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaAmberBgDark else OsdaAmberBg
+    val green: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaGreenDark else OsdaGreen
+    val greenBg: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaGreenBgDark else OsdaGreenBg
+    val red: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaRedDark else OsdaRed
+    val redBg: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaRedBgDark else OsdaRedBg
+    val blue: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaBlueDark else OsdaBlue
+    val blueBg: Color
+        @Composable get() = if (LocalOsdaDarkTheme.current) OsdaBlueBgDark else OsdaBlueBg
 }
