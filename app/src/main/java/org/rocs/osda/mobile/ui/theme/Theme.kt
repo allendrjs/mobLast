@@ -1,6 +1,8 @@
 package org.rocs.osda.mobile.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -15,6 +17,19 @@ private val OsdaHeading = Color(0xFF1A1A2E)
 
 private val OsdaMuted = Color(0xFF6D6D7F)
 private val OsdaNavInactive = Color(0xFF6E6E7D)
+
+// Dark-theme surface tones. Primary/onPrimary and every semantic status
+// color below (amber/green/red/blue) are deliberately left unchanged
+// between themes -- they're each self-contained fg/bg pairs (badges,
+// pills, the brand-colored header block) that already carry their own
+// contrast regardless of the surrounding page, so only the structural
+// background/surface/text tones actually need a dark variant.
+private val OsdaBackgroundDark = Color(0xFF121218)
+private val OsdaSurfaceDark = Color(0xFF1B1B22)
+private val OsdaBorderDark = Color(0xFF2E2E38)
+private val OsdaHeadingDark = Color(0xFFF2F1F7)
+private val OsdaMutedDark = Color(0xFFA6A6B5)
+private val OsdaNavInactiveDark = Color(0xFF8B8B9C)
 
 private val OsdaAmber = Color(0xFF916515)
 private val OsdaAmberBg = Color(0xFFFDF1D6)
@@ -43,9 +58,29 @@ private val LightColors = lightColorScheme(
     error = OsdaRed
 )
 
+private val DarkColors = darkColorScheme(
+    primary = OsdaPrimary,
+    onPrimary = OsdaSurface,
+    background = OsdaBackgroundDark,
+    onBackground = OsdaHeadingDark,
+    surface = OsdaSurfaceDark,
+    onSurface = OsdaHeadingDark,
+    surfaceVariant = OsdaSurfaceDark,
+    onSurfaceVariant = OsdaMutedDark,
+    outline = OsdaBorderDark,
+    error = OsdaRed
+)
+
+/**
+ * Follows the system dark-mode setting by default. Every screen already
+ * pulls its colors from MaterialTheme.colorScheme (background/surface/
+ * onBackground/onSurfaceVariant/outline) rather than hardcoded hex, so
+ * switching the active ColorScheme here is enough to re-theme the whole
+ * app -- no per-screen changes needed.
+ */
 @Composable
-fun OsdaMobileTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = LightColors, content = content)
+fun OsdaMobileTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, content = content)
 }
 
 object OsdaTokens {
@@ -55,7 +90,8 @@ object OsdaTokens {
     val buttonRadius = 12.dp
     val inputRadius = 10.dp
 
-    val navInactive = OsdaNavInactive
+    val navInactive: Color
+        @Composable get() = if (isSystemInDarkTheme()) OsdaNavInactiveDark else OsdaNavInactive
     val primaryMuted = OsdaPrimaryMuted
 
     val amber = OsdaAmber

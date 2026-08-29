@@ -47,7 +47,7 @@ fun MarkdownText(
         blocks.forEach { block ->
             when (block) {
                 is MarkdownBlock.Heading -> Text(
-                    text = inlineAnnotatedString(block.text),
+                    text = inlineAnnotatedString(block.text, color),
                     color = color,
                     style = style.copy(
                         fontWeight = FontWeight.Bold,
@@ -56,7 +56,7 @@ fun MarkdownText(
                 )
 
                 is MarkdownBlock.Paragraph -> Text(
-                    text = inlineAnnotatedString(block.text),
+                    text = inlineAnnotatedString(block.text, color),
                     color = color,
                     style = style
                 )
@@ -65,7 +65,7 @@ fun MarkdownText(
                     block.items.forEach { item ->
                         Row {
                             Text("•  ", color = color, style = style)
-                            Text(inlineAnnotatedString(item), color = color, style = style)
+                            Text(inlineAnnotatedString(item, color), color = color, style = style)
                         }
                     }
                 }
@@ -101,7 +101,7 @@ private fun MarkdownTable(rows: List<List<String>>, color: Color, style: TextSty
             ) {
                 for (columnIndex in 0 until columnCount) {
                     Text(
-                        text = inlineAnnotatedString(row.getOrNull(columnIndex).orEmpty()),
+                        text = inlineAnnotatedString(row.getOrNull(columnIndex).orEmpty(), color),
                         color = color,
                         style = style.copy(
                             fontSize = (style.fontSize.value * 0.92f).sp,
@@ -191,7 +191,13 @@ private fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
 
 private val inlineRegex = Regex("""\*\*(.+?)\*\*|`(.+?)`|\*(.+?)\*""")
 
-private fun inlineAnnotatedString(text: String): AnnotatedString = buildAnnotatedString {
+// codeHighlight is derived from the text's own foreground color (rather
+// than a fixed Color.Black) so the inline-code background stays visible
+// against both a light and a dark chat bubble -- a flat black tint at low
+// alpha reads as a faint light-gray highlight in light mode but is nearly
+// invisible over a dark surface in dark mode.
+private fun inlineAnnotatedString(text: String, textColor: Color): AnnotatedString = buildAnnotatedString {
+    val codeHighlight = textColor.copy(alpha = 0.12f)
     var lastIndex = 0
     for (match in inlineRegex.findAll(text)) {
         if (match.range.first > lastIndex) append(text.substring(lastIndex, match.range.first))
@@ -201,7 +207,7 @@ private fun inlineAnnotatedString(text: String): AnnotatedString = buildAnnotate
         when {
             bold != null -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(bold) }
             code != null -> withStyle(
-                SpanStyle(fontFamily = FontFamily.Monospace, background = Color.Black.copy(alpha = 0.06f))
+                SpanStyle(fontFamily = FontFamily.Monospace, background = codeHighlight)
             ) { append(code) }
 
             italic != null -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(italic) }

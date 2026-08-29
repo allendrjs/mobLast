@@ -1,0 +1,4 @@
+<resources>
+    <!-- Matches OsdaBackgroundDark in Theme.kt. -->
+    <color name="window_background">#FF121218</color>
+</resources>

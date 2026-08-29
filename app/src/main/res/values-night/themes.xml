@@ -1,0 +1,10 @@
+<resources>
+    <!-- Same style name as values/themes.xml -- Android picks this variant
+         automatically when the system is in dark mode (uiMode night resource
+         qualifier), before Compose's own OsdaMobileTheme ever runs. Keeps the
+         pre-first-frame window background and system status/nav bar chrome
+         from flashing light while the rest of the app renders dark. -->
+    <style name="Theme.OsdaMobile" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>
