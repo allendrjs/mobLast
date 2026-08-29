@@ -1,5 +1,5 @@
 <resources>
-    <!-- Same style name as values/themes.xml -- Android picks this variant
+    <!-- Same style name as values/themes.xml. Android picks this variant
          automatically when the system is in dark mode (uiMode night resource
          qualifier), before Compose's own OsdaMobileTheme ever runs. Keeps the
          pre-first-frame window background and system status/nav bar chrome
