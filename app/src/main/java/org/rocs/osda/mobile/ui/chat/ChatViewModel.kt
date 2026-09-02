@@ -150,6 +150,7 @@ class ChatViewModel(
                 _uiState.value = _uiState.value.copy(isSending = false)
                 if (eligible.isEmpty()) {
                     appendBotMessage("You don't currently have any offenses that are eligible for an appeal.")
+                    setQuickReplies(starterQuickReplies())
                 } else {
                     flowStep = AppealFlowStep.PickingOffense(eligible)
                     appendBotMessage("Which offense would you like to appeal?")
@@ -158,6 +159,7 @@ class ChatViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false)
                 appendBotMessage(e.toUserMessage("Couldn't load your offenses right now. Please try again."))
+                setQuickReplies(starterQuickReplies())
             }
         }
     }
@@ -185,12 +187,13 @@ class ChatViewModel(
                     ?: throw IllegalStateException("No current enrollment on file.")
                 enrollmentId = currentEnrollmentId
                 appealRepository.submitAppeal(step.record.recordId, currentEnrollmentId, step.message)
-                appendBotMessage("Your appeal for \"${step.record.offense.offense}\" has been submitted. You can track its status on the Appeals tab.")
+                appendBotMessage("Your appeal for \"${step.record.offense.offense}\" has been submitted. Tap below to view it, or keep asking me anything else.")
+                _uiState.value = _uiState.value.copy(isSending = false)
+                setQuickReplies(listOf(QuickReply("view_appeals", "View My Appeals")) + starterQuickReplies())
             } catch (e: Exception) {
                 appendBotMessage(e.toUserMessage("Couldn't submit your appeal. Please try again, or use the Appeals tab."))
-            } finally {
                 _uiState.value = _uiState.value.copy(isSending = false)
-                setQuickReplies(emptyList())
+                setQuickReplies(starterQuickReplies())
             }
         }
     }
@@ -198,7 +201,7 @@ class ChatViewModel(
     private fun cancelAppealFlow() {
         flowStep = null
         appendBotMessage("No problem, the appeal wasn't submitted. Ask me anything else, or start over anytime.")
-        setQuickReplies(emptyList())
+        setQuickReplies(starterQuickReplies())
     }
 
     private fun dispatchToBot(message: String, history: List<ChatMessage>) {

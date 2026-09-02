@@ -43,7 +43,7 @@ import org.rocs.osda.mobile.ui.common.BackHeader
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @Composable
-fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
+fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
@@ -89,7 +89,12 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
             ) {
                 items(state.quickReplies) { reply ->
                     AssistChip(
-                        onClick = { viewModel.onQuickReplySelected(reply) },
+                        // "View My Appeals" leaves the chat screen entirely,
+                        // so it's handled here as real navigation instead of
+                        // going through the ViewModel like the other chips.
+                        onClick = {
+                            if (reply.id == "view_appeals") onViewAppeals() else viewModel.onQuickReplySelected(reply)
+                        },
                         label = { Text(reply.label) }
                     )
                 }
