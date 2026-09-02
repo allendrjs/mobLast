@@ -98,7 +98,7 @@ class ChatViewModel(
 
             null -> {
                 if (looksLikeAppealIntent(message)) {
-                    startAppealFlow()
+                    offerAppealChoice()
                 } else {
                     dispatchToBot(message, historyForRequest)
                 }
@@ -113,7 +113,8 @@ class ChatViewModel(
         setQuickReplies(emptyList())
 
         when {
-            reply.id == "start_appeal" -> startAppealFlow()
+            reply.id == "start_appeal" -> offerAppealChoice()
+            reply.id == "appeal_in_chat" -> startAppealFlow()
             reply.id == "check_status" -> checkStatus()
             reply.id == "flow_cancel" || reply.id == "confirm_cancel" -> cancelAppealFlow()
             reply.id == "confirm_submit" -> confirmAppealSubmission()
@@ -130,6 +131,20 @@ class ChatViewModel(
                 dispatchToBot(topicQuestionFor(reply.id), history)
             }
         }
+    }
+
+    /**
+     * Offers the choice this ViewModel now supports before actually starting
+     * anything: guided step-by-step in chat, or leave chat and file it the
+     * normal way (pick the offense on the Offenses tab, same as before this
+     * feature existed).
+     */
+    private fun offerAppealChoice() {
+        appendBotMessage("Would you like to file it right here in chat, or go do it yourself in the app?")
+        setQuickReplies(listOf(
+            QuickReply("appeal_in_chat", "File Here in Chat"),
+            QuickReply("appeal_go_manual", "Go to Offenses")
+        ))
     }
 
     private fun startAppealFlow() {

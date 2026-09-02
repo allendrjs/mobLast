@@ -96,7 +96,7 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
                         onClick = {
                             when (reply.id) {
                                 "view_appeals" -> onViewAppeals()
-                                "view_offenses" -> onViewOffenses()
+                                "view_offenses", "appeal_go_manual" -> onViewOffenses()
                                 else -> viewModel.onQuickReplySelected(reply)
                             }
                         },
