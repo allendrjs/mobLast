@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +43,7 @@ import org.rocs.osda.mobile.ui.common.BackHeader
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @Composable
-fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
+fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -> Unit, onViewOffenses: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
@@ -75,6 +77,31 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 items(state.messages) { message -> MessageBubble(message) }
                 if (state.isSending) {
                     item { TypingIndicator(isFirstMessage = state.messages.size <= 1) }
+                }
+            }
+        }
+
+        if (state.quickReplies.isNotEmpty() && !state.isSending) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                items(state.quickReplies) { reply ->
+                    AssistChip(
+                        // "View My Appeals"/"View My Offenses" leave the chat
+                        // screen entirely, so they're handled here as real
+                        // navigation instead of going through the ViewModel
+                        // like the other chips.
+                        onClick = {
+                            when (reply.id) {
+                                "view_appeals" -> onViewAppeals()
+                                "view_offenses", "appeal_go_manual" -> onViewOffenses()
+                                else -> viewModel.onQuickReplySelected(reply)
+                            }
+                        },
+                        label = { Text(reply.label) }
+                    )
                 }
             }
         }

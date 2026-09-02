@@ -129,11 +129,17 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
             composable(Routes.CHAT) { backStackEntry ->
                 val viewModel: ChatViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
-                    factory = viewModelFactory { initializer { ChatViewModel(app.chatRepository) } }
+                    factory = viewModelFactory {
+                        initializer {
+                            ChatViewModel(app.chatRepository, app.recordRepository, app.appealRepository, app.enrollmentRepository)
+                        }
+                    }
                 )
                 ChatScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onViewAppeals = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } },
+                    onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } }
                 )
             }
 
