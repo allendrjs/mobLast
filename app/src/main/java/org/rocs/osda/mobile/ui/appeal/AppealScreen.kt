@@ -233,6 +233,12 @@ private fun AppealHistoryCard(appeal: Appeal) {
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 6.dp)
         )
+        Text(
+            "Date of Resolution: ${appeal.dateProcessed ?: "Not yet resolved"}",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(top = 2.dp)
+        )
         appeal.remarks?.let {
             Text(
                 "Remarks: $it",

@@ -111,5 +111,13 @@ private fun OffenseCard(record: OffenseRecord, onClick: () -> Unit) {
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 4.dp)
         )
+        record.dateOfResolution?.let {
+            Text(
+                "Resolved: $it",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
     }
 }

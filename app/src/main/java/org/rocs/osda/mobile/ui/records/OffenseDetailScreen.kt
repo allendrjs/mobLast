@@ -73,6 +73,8 @@ fun OffenseDetailScreen(
                 Spacer(Modifier.height(8.dp))
                 StatRow("Date of Violation", record.dateOfViolation)
                 Spacer(Modifier.height(8.dp))
+                StatRow("Date of Resolution", record.dateOfResolution ?: "Not yet resolved")
+                Spacer(Modifier.height(8.dp))
                 StatRow("Reported By", record.employee?.fullName ?: "Not on file")
                 Spacer(Modifier.height(8.dp))
                 StatRow("Status", record.status.toDisplayStatus())
