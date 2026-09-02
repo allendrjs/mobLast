@@ -138,7 +138,8 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 ChatScreen(
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
-                    onViewAppeals = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } }
+                    onViewAppeals = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } },
+                    onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } }
                 )
             }
 

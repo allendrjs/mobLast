@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.ChatMessage
 import org.rocs.osda.mobile.data.model.OffenseRecord
+import org.rocs.osda.mobile.data.model.isPending
 import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.ChatRepository
@@ -113,6 +114,7 @@ class ChatViewModel(
 
         when {
             reply.id == "start_appeal" -> startAppealFlow()
+            reply.id == "check_status" -> checkStatus()
             reply.id == "flow_cancel" || reply.id == "confirm_cancel" -> cancelAppealFlow()
             reply.id == "confirm_submit" -> confirmAppealSubmission()
             reply.id.startsWith("offense_") -> {
@@ -159,6 +161,32 @@ class ChatViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false)
                 appendBotMessage(e.toUserMessage("Couldn't load your offenses right now. Please try again."))
+                setQuickReplies(starterQuickReplies())
+            }
+        }
+    }
+
+    /** Read-only lookup, not an LLM call -- counts come straight from the same repositories the Offenses/Appeals tabs use. */
+    private fun checkStatus() {
+        _uiState.value = _uiState.value.copy(isSending = true)
+        viewModelScope.launch {
+            try {
+                val records = recordRepository.getMyRecords()
+                val appeals = appealRepository.getMyAppeals()
+                val activeOffenses = records.count { it.status.equals("PENDING", ignoreCase = true) }
+                val pendingAppeals = appeals.count { it.isPending() }
+                appendBotMessage(
+                    "You have ${records.size} offense(s) on file (${activeOffenses} still active), " +
+                        "and ${appeals.size} appeal(s) filed (${pendingAppeals} awaiting a decision)."
+                )
+                _uiState.value = _uiState.value.copy(isSending = false)
+                setQuickReplies(
+                    listOf(QuickReply("view_offenses", "View My Offenses"), QuickReply("view_appeals", "View My Appeals")) +
+                        starterQuickReplies()
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSending = false)
+                appendBotMessage(e.toUserMessage("Couldn't check your status right now. Please try again."))
                 setQuickReplies(starterQuickReplies())
             }
         }
@@ -241,6 +269,7 @@ class ChatViewModel(
         "topic_dress_code" -> "What is the dress code policy?"
         "topic_attendance" -> "What is the attendance policy?"
         "topic_major_offenses" -> "What counts as a major offense?"
+        "topic_bullying" -> "What is the policy on bullying?"
         else -> id.removePrefix("topic_").replace('_', ' ')
     }
 
@@ -257,9 +286,11 @@ class ChatViewModel(
     companion object {
         fun starterQuickReplies(): List<QuickReply> = listOf(
             QuickReply("start_appeal", "File an Appeal"),
+            QuickReply("check_status", "Check My Offenses/Appeals"),
             QuickReply("topic_dress_code", "Dress Code"),
             QuickReply("topic_attendance", "Attendance"),
-            QuickReply("topic_major_offenses", "Major Offenses")
+            QuickReply("topic_major_offenses", "Major Offenses"),
+            QuickReply("topic_bullying", "Bullying Policy")
         )
     }
 }
