@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +77,21 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 items(state.messages) { message -> MessageBubble(message) }
                 if (state.isSending) {
                     item { TypingIndicator(isFirstMessage = state.messages.size <= 1) }
+                }
+            }
+        }
+
+        if (state.quickReplies.isNotEmpty() && !state.isSending) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                items(state.quickReplies) { reply ->
+                    AssistChip(
+                        onClick = { viewModel.onQuickReplySelected(reply) },
+                        label = { Text(reply.label) }
+                    )
                 }
             }
         }
