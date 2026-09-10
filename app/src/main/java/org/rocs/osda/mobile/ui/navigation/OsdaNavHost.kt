@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -51,6 +55,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.OsdaApplication
+import org.rocs.osda.mobile.ui.appeal.AppealScreen
+import org.rocs.osda.mobile.ui.appeal.AppealViewModel
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 import org.rocs.osda.mobile.ui.appeal.AppealScreen
 import org.rocs.osda.mobile.ui.appeal.AppealViewModel
@@ -126,6 +132,14 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 }
             }
 
+        composable(Routes.DASHBOARD) {
+            OsdaTabScaffold(navController, OsdaTab.DASHBOARD, app) {
+                DashboardScreen(
+                    viewModel = remember {
+                        DashboardViewModel(app.sessionManager, app.enrollmentRepository, app.recordRepository, app.appealRepository)
+                    },
+                    onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } },
+                    onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } }
             composable(Routes.CHAT) { backStackEntry ->
                 val viewModel: ChatViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
@@ -143,6 +157,51 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 )
             }
 
+        composable(Routes.OFFENSES) {
+            val recordsViewModel = remember { RecordsViewModel(app.recordRepository) }
+            val state by recordsViewModel.uiState.collectAsState()
+            OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
+                if (state.selectedRecord == null) {
+                    OffensesScreen(
+                        viewModel = recordsViewModel,
+                        onOpenOffense = { }
+                    )
+                } else {
+                    OffenseDetailScreen(
+                        viewModel = recordsViewModel,
+                        onBack = { recordsViewModel.clearSelection() },
+                        onFileAppeal = { recordId ->
+                            recordsViewModel.clearSelection()
+                            navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
+                        }
+                    )
+                }
+            }
+        }
+
+        composable(
+            route = Routes.APPEALS_PATTERN,
+            arguments = listOf(navArgument(Routes.APPEAL_RECORD_ARG) {
+                type = NavType.LongType
+                defaultValue = -1L
+            })
+        ) { backStackEntry ->
+            val recordId = backStackEntry.arguments?.getLong(Routes.APPEAL_RECORD_ARG)?.takeIf { it > 0 }
+            OsdaTabScaffold(navController, OsdaTab.APPEALS, app) {
+                AppealScreen(
+                    viewModel = remember(recordId) {
+                        AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId)
+                    }
+                )
+            }
+        }
+
+        composable(Routes.PROFILE) {
+            OsdaTabScaffold(navController, OsdaTab.PROFILE, app) {
+                ProfileScreen(
+                    viewModel = remember {
+                        ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository)
+                    }
             composable(Routes.OFFENSES) { backStackEntry ->
                 val recordsViewModel: RecordsViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,

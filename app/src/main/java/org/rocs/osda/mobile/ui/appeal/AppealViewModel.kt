@@ -27,6 +27,7 @@ data class AppealUiState(
     val error: String? = null,
     val submitError: String? = null,
     val submitSuccess: Boolean = false
+)
 ) {
     val filteredAppeals: List<Appeal>
         get() = when (filter) {
@@ -66,6 +67,7 @@ class AppealViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
+                val appeals = appealRepository.getMyAppeals()
                 // Most recently filed appeal on top; appeals with no filed
                 // date (shouldn't normally happen) sort to the bottom.
                 val appeals = appealRepository.getMyAppeals().sortedByDescending { it.dateFiled ?: "" }
@@ -76,6 +78,14 @@ class AppealViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    error = e.message ?: "Couldn't load your appeals. Please try again."
+                )
+            }
+        }
+    }
+
+    fun selectRecord(recordId: Long) {
+        _uiState.value = _uiState.value.copy(selectedRecordId = recordId, submitError = null)
                     error = e.toUserMessage("Couldn't load your appeals. Please try again.")
                 )
             }
@@ -90,6 +100,7 @@ class AppealViewModel(
         _uiState.value = _uiState.value.copy(message = value, submitError = null)
     }
 
+    fun submit() {
     /**
      * Runs the same checks [submit] does, without actually submitting.
      * Called before showing the "Submit this appeal?" confirmation dialog so
@@ -104,6 +115,17 @@ class AppealViewModel(
         val recordId = state.selectedRecordId
         if (recordId == null) {
             _uiState.value = state.copy(submitError = "Please select which offense you're appealing.")
+            return
+        }
+        if (state.message.isBlank()) {
+            _uiState.value = state.copy(submitError = "Please enter a message explaining your appeal.")
+            return
+        }
+        val currentEnrollmentId = enrollmentId
+        if (currentEnrollmentId == null) {
+            _uiState.value = state.copy(submitError = "Couldn't determine your current enrollment. Please try again later.")
+            return
+        }
             return false
         }
         // The backend allows exactly one appeal per offense record, regardless of
@@ -137,16 +159,24 @@ class AppealViewModel(
             _uiState.value = _uiState.value.copy(isSubmitting = true, submitError = null)
             try {
                 appealRepository.submitAppeal(recordId, currentEnrollmentId, state.message.trim())
+                val refreshed = appealRepository.getMyAppeals()
                 val refreshed = appealRepository.getMyAppeals().sortedByDescending { it.dateFiled ?: "" }
                 _uiState.value = _uiState.value.copy(
                     isSubmitting = false,
                     submitSuccess = true,
                     appeals = refreshed,
+                    selectedRecordId = null,
                     message = ""
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isSubmitting = false,
+                    submitError = e.message ?: "Couldn't submit your appeal. Please try again."
+                )
+            }
+        }
+    }
+}
                     submitError = e.toUserMessage("Couldn't submit your appeal. Please try again.")
                 )
             }
