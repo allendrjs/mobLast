@@ -4,18 +4,23 @@ import android.app.Application
 import org.rocs.osda.mobile.data.remote.ApiClient
 import org.rocs.osda.mobile.data.remote.AppealApi
 import org.rocs.osda.mobile.data.remote.AuthApi
+import org.rocs.osda.mobile.data.remote.ChatApi
 import org.rocs.osda.mobile.data.remote.EnrollmentApi
 import org.rocs.osda.mobile.data.remote.GuardianApi
 import org.rocs.osda.mobile.data.remote.RecordApi
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.AuthRepository
+import org.rocs.osda.mobile.data.repository.ChatRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.GuardianRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 import org.rocs.osda.mobile.session.SessionManager
+import org.rocs.osda.mobile.session.ThemePreferences
 
 class OsdaApplication : Application() {
     lateinit var sessionManager: SessionManager
+        private set
+    lateinit var themePreferences: ThemePreferences
         private set
     lateinit var authRepository: AuthRepository
         private set
@@ -27,10 +32,13 @@ class OsdaApplication : Application() {
         private set
     lateinit var guardianRepository: GuardianRepository
         private set
+    lateinit var chatRepository: ChatRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
         sessionManager = SessionManager(this)
+        themePreferences = ThemePreferences(this)
         val retrofit = ApiClient.create(sessionManager)
 
         authRepository = AuthRepository(retrofit.create(AuthApi::class.java), sessionManager)
@@ -38,5 +46,6 @@ class OsdaApplication : Application() {
         appealRepository = AppealRepository(retrofit.create(AppealApi::class.java), sessionManager)
         enrollmentRepository = EnrollmentRepository(retrofit.create(EnrollmentApi::class.java), sessionManager)
         guardianRepository = GuardianRepository(retrofit.create(GuardianApi::class.java), sessionManager)
+        chatRepository = ChatRepository(retrofit.create(ChatApi::class.java))
     }
 }

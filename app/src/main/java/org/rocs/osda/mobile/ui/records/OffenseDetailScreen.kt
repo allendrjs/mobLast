@@ -23,6 +23,7 @@ import org.rocs.osda.mobile.ui.common.PrimaryButton
 import org.rocs.osda.mobile.ui.common.StatRow
 import org.rocs.osda.mobile.ui.common.StatusColors
 import org.rocs.osda.mobile.ui.common.StatusPill
+import org.rocs.osda.mobile.ui.common.toDisplayStatus
 
 
 @Composable
@@ -56,7 +57,7 @@ fun OffenseDetailScreen(
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold
                     )
-                    StatusPill(record.status.replaceFirstChar { it.uppercase() }, fg, bg)
+                    StatusPill(record.status.toDisplayStatus(), fg, bg)
                 }
                 Text(
                     record.offense.offense,
@@ -72,9 +73,11 @@ fun OffenseDetailScreen(
                 Spacer(Modifier.height(8.dp))
                 StatRow("Date of Violation", record.dateOfViolation)
                 Spacer(Modifier.height(8.dp))
+                StatRow("Date of Resolution", record.dateOfResolution ?: "Not yet resolved")
+                Spacer(Modifier.height(8.dp))
                 StatRow("Reported By", record.employee?.fullName ?: "Not on file")
                 Spacer(Modifier.height(8.dp))
-                StatRow("Status", record.status.replaceFirstChar { it.uppercase() })
+                StatRow("Status", record.status.toDisplayStatus())
             }
 
             OsdaCard(modifier = Modifier.padding(bottom = 16.dp)) {
@@ -88,7 +91,8 @@ fun OffenseDetailScreen(
         }
 
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-            val canAppeal = record.status.uppercase() == "PENDING"
+            val alreadyAppealed = state.hasActiveAppeal(record.recordId)
+            val canAppeal = record.status.uppercase() == "PENDING" && !alreadyAppealed
             PrimaryButton(
                 text = "File an Appeal",
                 enabled = canAppeal,
@@ -96,7 +100,12 @@ fun OffenseDetailScreen(
             )
             if (!canAppeal) {
                 Text(
-                    "This offense is ${record.status.lowercase()} and can no longer be appealed.",
+                    if (record.status.uppercase() == "APPEALED")
+                        "This offense is already under appeal review."
+                    else if (alreadyAppealed)
+                        "You already have an appeal on file for this offense."
+                    else
+                        "This offense is ${record.status.lowercase()} and can no longer be appealed.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,

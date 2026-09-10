@@ -3,17 +3,22 @@ package org.rocs.osda.mobile.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Enrollment
 import org.rocs.osda.mobile.data.model.Guardian
+import org.rocs.osda.mobile.data.model.isPending
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.GuardianRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 import org.rocs.osda.mobile.session.SessionManager
+import org.rocs.osda.mobile.session.ThemePreferences
 
 data class ProfileUiState(
     val isLoading: Boolean = false,
@@ -30,11 +35,21 @@ class ProfileViewModel(
     private val enrollmentRepository: EnrollmentRepository,
     private val guardianRepository: GuardianRepository,
     private val recordRepository: RecordRepository,
-    private val appealRepository: AppealRepository
+    private val appealRepository: AppealRepository,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
+
+    // App-only preference (Appearance switch below) -- independent of the
+    // device's own system dark-mode setting.
+    val darkMode: StateFlow<Boolean> = themePreferences.darkModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun setDarkMode(enabled: Boolean) {
+        viewModelScope.launch { themePreferences.setDarkMode(enabled) }
+    }
 
     init { load() }
 
@@ -54,12 +69,12 @@ class ProfileViewModel(
                     enrollment = enrollment,
                     guardians = guardians,
                     violationsCount = records.size,
-                    pendingAppealsCount = appeals.count { it.status.uppercase() == "PENDING" || it.status.uppercase() == "UNDER_REVIEW" }
+                    pendingAppealsCount = appeals.count { it.isPending() }
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Couldn't load your profile. Please try again."
+                    error = e.toUserMessage("Couldn't load your profile. Please try again.")
                 )
             }
         }

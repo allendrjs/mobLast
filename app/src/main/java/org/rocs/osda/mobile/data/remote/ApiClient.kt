@@ -9,6 +9,7 @@ import org.rocs.osda.mobile.BuildConfig
 import org.rocs.osda.mobile.session.SessionManager
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 private class AuthInterceptor(private val sessionManager: SessionManager) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -30,6 +31,12 @@ object ApiClient {
         val client = OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(sessionManager))
             .addInterceptor(logging)
+            // Chatbot replies go through a local LLM (Ollama) and can take well over
+            // OkHttp's 10s default, especially on the first call after the model loads
+            // into memory. Regular CRUD endpoints are unaffected since they respond fast.
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(90, TimeUnit.SECONDS)
+            .writeTimeout(90, TimeUnit.SECONDS)
             .build()
 
         return Retrofit.Builder()

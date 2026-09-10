@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AuthRepository
 
 data class LoginUiState(
@@ -44,7 +45,7 @@ class LoginViewModel(private val authRepository: AuthRepository) : ViewModel() {
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Login failed. Please try again."
+                    error = e.toUserMessage("Login failed. Please try again.")
                 )
             }
         }

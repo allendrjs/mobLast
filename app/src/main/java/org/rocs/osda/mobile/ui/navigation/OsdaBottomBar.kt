@@ -20,9 +20,16 @@ fun OsdaBottomBar(currentTab: OsdaTab, onTabSelected: (OsdaTab) -> Unit) {
                 icon = { Icon(imageVector = tab.icon, contentDescription = tab.label) },
                 label = { Text(tab.label) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    // OsdaTokens.blue instead of colorScheme.primary: primary
+                    // is a constant dark navy (by design, since it's normally
+                    // used as a solid-fill background elsewhere), which reads
+                    // fine as text on a light bar but is nearly invisible as
+                    // the *selected-tab* tint against a dark bar in dark mode.
+                    // OsdaTokens.blue is dark-mode-aware and stays legible in
+                    // both themes.
+                    selectedIconColor = OsdaTokens.blue,
                     unselectedIconColor = OsdaTokens.navInactive,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = OsdaTokens.blue,
                     unselectedTextColor = OsdaTokens.navInactive,
                     indicatorColor = MaterialTheme.colorScheme.surface
                 )
