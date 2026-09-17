@@ -1,5 +1,8 @@
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Rogationist College's official seal navy, not OsdaPrimary in Theme.kt
+         (#14123A) -- the launcher icon intentionally matches the school's
+         real branding rather than the in-app accent color. -->
+    <color name="ic_launcher_background">#10264C</color>
     <!-- Matches OsdaBackground in Theme.kt; overridden in values-night for dark mode. -->
     <color name="window_background">#FFF7F5F2</color>
 </resources>

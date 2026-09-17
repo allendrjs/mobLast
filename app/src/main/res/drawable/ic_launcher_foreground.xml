@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RC-OSD shield mark. White shield on the navy background layer (see
+     ic_launcher_background in colors.xml), navy checkmark on top of the
+     white shield -- same white-on-navy convention as Rogationist College's
+     actual seal. Content is kept inside Android's ~66dp adaptive-icon safe
+     zone (centered in the 108x108 viewport) so it isn't clipped when the
+     launcher crops it to a circle or rounded square. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 29 22 L 79 22 L 79 46 C 79 62, 68 72, 54 82 C 40 72, 29 62, 29 46 Z" />
+    <path
+        android:strokeColor="#10264C"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 40.7 52 L 49 63 L 67.3 40" />
+</vector>
