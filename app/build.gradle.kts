@@ -1,7 +1,20 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+// Release signing credentials live in keystore.properties (gitignored, never
+// committed) instead of being hardcoded here. See keystore.properties.example
+// for the expected format.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -15,13 +28,35 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        // Emulator default (10.0.2.2 = the host machine, from inside the
+        // Android emulator only). Sideloaded builds on a real device need
+        // this pointed at a reachable address instead -- override per
+        // build type below.
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
+    }
+
+    signingConfigs {
+        if (hasKeystoreProperties) {
+            create("release") {
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (hasKeystoreProperties) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            // Real device on the same Wi-Fi as the backend -- replace with
+            // your laptop's actual LAN IPv4 address (ipconfig on Windows,
+            // look for "IPv4 Address" under your Wi-Fi adapter).
+            buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.100:8080/\"")
         }
     }
 
