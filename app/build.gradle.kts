@@ -25,6 +25,10 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        // Emulator default (10.0.2.2 = the host machine, from inside the
+        // Android emulator only). Sideloaded builds on a real device need
+        // this pointed at a reachable address instead -- override per
+        // build type below.
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
     }
 

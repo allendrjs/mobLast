@@ -148,6 +148,10 @@ fun OsdaCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
 
 @Composable
 fun InitialsBadge(initials: String, modifier: Modifier = Modifier) {
+    // Solid primary (dark navy) background with white text -- the same
+    // pairing PrimaryButton uses -- instead of white text over a
+    // low-alpha lavender fill, which didn't have enough contrast against
+    // the light app background to reliably meet WCAG AA for text this size.
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -167,6 +171,18 @@ fun StatRow(label: String, value: String) {
         Text(value, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
     }
 }
+fun String.toDisplayStatus(): String =
+    lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+
+/**
+ * Backend status strings come back SHOUTING_CASE ("PENDING", "APPEALED",
+ * "UNDER_REVIEW"). This titlecases them for display ("Pending", "Appealed",
+ * "Under review"). Several screens previously did this inconsistently --
+ * some called `replaceFirstChar { it.uppercase() }` directly on the
+ * already-all-caps string, which is a no-op and left "PENDING" on screen,
+ * while others correctly lowercased first. This is the one place that
+ * conversion should happen.
+ */
 fun String.toDisplayStatus(): String =
     lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 

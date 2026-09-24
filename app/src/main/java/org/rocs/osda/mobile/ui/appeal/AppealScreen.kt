@@ -68,6 +68,20 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
         }
     }
 
+    if (viewModel.isFilingMode) {
+        FileAppealContent(viewModel)
+    } else {
+        MyAppealsContent(viewModel)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FileAppealContent(viewModel: AppealViewModel) {
+    val state by viewModel.uiState.collectAsState()
+    val offenseRecord = state.records.firstOrNull { it.recordId == state.selectedRecordId }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
     PullToRefreshBox(
         isRefreshing = state.isLoading,
         onRefresh = viewModel::load,

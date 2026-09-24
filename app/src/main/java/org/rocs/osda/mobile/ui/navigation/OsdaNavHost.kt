@@ -317,6 +317,93 @@ private fun DraggableChatFab(
 }
 
 @Composable
+private fun DraggableChatFab(
+    offsetX: MutableState<Float>,
+    offsetY: MutableState<Float>,
+    minX: Float,
+    maxX: Float,
+    minY: Float,
+    maxY: Float,
+    onClick: () -> Unit
+) {
+    // Used only for the settle-to-edge animation after a drag, launched
+    // *outside* the pointer-input gesture coroutine below. AwaitPointerEventScope
+    // is a restricted-suspension scope: code inside awaitEachGesture can only
+    // call suspend functions that belong to that scope itself (awaitPointerEvent,
+    // etc.), not arbitrary suspend functions like Animatable.animateTo/snapTo or
+    // the animate() helper -- that's what "Restricted suspending functions can
+    // invoke member or extension suspending functions only on their restricted
+    // receiver" was flagging when those were called directly inside the gesture.
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+            .size(56.dp)
+            .pointerInput(minX, maxX, minY, maxY) {
+                // Hand-rolled instead of detectDragGestures: that function
+                // only calls onDragStart/onDragEnd once the touch has
+                // already moved past the system touch-slop, so a plain tap
+                // (down, no movement, up) never fires onDragEnd at all --
+                // that was silently swallowing every tap on the bubble.
+                // Tracking the gesture manually from the first down event
+                // lets a small/no movement fall through to onClick().
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    var totalDrag = 0f
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+
+                        val dragAmount = change.position - change.previousPosition
+                        if (dragAmount.x != 0f || dragAmount.y != 0f) {
+                            change.consume()
+                            totalDrag += abs(dragAmount.x) + abs(dragAmount.y)
+                            // Plain state writes, not suspend calls -- safe
+                            // to make directly inside this restricted
+                            // pointer-input coroutine, and always reflect
+                            // the true live position the instant the loop
+                            // below exits.
+                            offsetX.value = (offsetX.value + dragAmount.x).coerceIn(minX, maxX)
+                            offsetY.value = (offsetY.value + dragAmount.y).coerceIn(minY, maxY)
+                        }
+                    }
+
+                    if (totalDrag < DRAG_CLICK_THRESHOLD_PX) {
+                        onClick()
+                    } else {
+                        // Snap to whichever edge it's closest to, like
+                        // iOS's AssistiveTouch bubble settling against the
+                        // side of the screen when you let go. Animated in a
+                        // separate, unrestricted coroutine (see the scope
+                        // comment above).
+                        val start = offsetX.value
+                        val target = if (start < (minX + maxX) / 2) minX else maxX
+                        scope.launch {
+                            animate(
+                                initialValue = start,
+                                targetValue = target,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                            ) { value, _ -> offsetX.value = value }
+                        }
+                    }
+                }
+            }
+            .shadow(elevation = 6.dp, shape = CircleShape)
+            .background(color = OsdaTokens.blue, shape = CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.AutoAwesome,
+            contentDescription = "Ask the Chatbot",
+            tint = Color.White
+        )
+    }
+}
+
+@Composable
 private fun OsdaTabScaffold(
     navController: NavHostController,
     currentTab: OsdaTab,
