@@ -19,23 +19,25 @@ data class RecordsUiState(
     val records: List<OffenseRecord> = emptyList(),
     val appeals: List<Appeal> = emptyList(),
     val filter: OffenseFilter = OffenseFilter.ALL,
-    val selectedRecord: OffenseRecord? = null,
     val error: String? = null
 ) {
     val filteredRecords: List<OffenseRecord>
         get() = when (filter) {
             OffenseFilter.ALL -> records
-            OffenseFilter.ACTIVE -> records.filter { it.status.uppercase() != "RESOLVED" }
-            OffenseFilter.RESOLVED -> records.filter { it.status.uppercase() == "RESOLVED" }
+            OffenseFilter.ACTIVE -> records.filterNot { it.isClosed() }
+            OffenseFilter.RESOLVED -> records.filter { it.isClosed() }
         }
 
     val totalCount: Int get() = records.size
-    val activeCount: Int get() = records.count { it.status.uppercase() != "RESOLVED" }
-    val resolvedCount: Int get() = records.count { it.status.uppercase() == "RESOLVED" }
+    val activeCount: Int get() = records.count { !it.isClosed() }
+    val resolvedCount: Int get() = records.count { it.isClosed() }
 
     fun hasActiveAppeal(recordId: Long): Boolean =
         appeals.any { it.record?.recordId == recordId }
 }
+
+private fun OffenseRecord.isClosed(): Boolean =
+    status.uppercase() in setOf("RESOLVED", "APPROVED")
 
 class RecordsViewModel(
     private val recordRepository: RecordRepository,
@@ -65,13 +67,5 @@ class RecordsViewModel(
 
     fun setFilter(filter: OffenseFilter) {
         _uiState.value = _uiState.value.copy(filter = filter)
-    }
-
-    fun selectRecord(record: OffenseRecord) {
-        _uiState.value = _uiState.value.copy(selectedRecord = record)
-    }
-
-    fun clearSelection() {
-        _uiState.value = _uiState.value.copy(selectedRecord = null)
     }
 }

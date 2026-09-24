@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "org.rocs.osda.mobile"
-        minSdk = 26
+        minSdk = 21
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"

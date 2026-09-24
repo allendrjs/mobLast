@@ -174,7 +174,8 @@ object StatusColors {
     @Composable
     fun forRecord(status: String): Pair<Color, Color> = when (status.uppercase()) {
         "RESOLVED" -> OsdaTokens.green to OsdaTokens.greenBg
-        "APPEALED" -> OsdaTokens.blue to OsdaTokens.blueBg
+        "APPROVED" -> OsdaTokens.green to OsdaTokens.greenBg
+        "PROCESSING" -> OsdaTokens.blue to OsdaTokens.blueBg
         else -> OsdaTokens.amber to OsdaTokens.amberBg
     }
 

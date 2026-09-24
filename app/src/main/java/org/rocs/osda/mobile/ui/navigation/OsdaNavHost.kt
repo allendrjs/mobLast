@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.NavType
@@ -72,6 +72,8 @@ private object Routes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val OFFENSES = "offenses"
+    const val OFFENSE_DETAIL_ARG = "recordId"
+    const val OFFENSE_DETAIL = "offense_detail/{$OFFENSE_DETAIL_ARG}"
     const val APPEALS = "appeals"
     const val PROFILE = "profile"
     const val CHAT = "chat"
@@ -80,6 +82,8 @@ private object Routes {
 
     fun appealsRoute(recordId: Long? = null): String =
         if (recordId != null) "$APPEALS?$APPEAL_RECORD_ARG=$recordId" else APPEALS
+
+    fun offenseDetailRoute(recordId: Long): String = "offense_detail/$recordId"
 }
 
 private const val DRAG_CLICK_THRESHOLD_PX = 24f
@@ -146,20 +150,35 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                     viewModelStoreOwner = backStackEntry,
                     factory = viewModelFactory { initializer { RecordsViewModel(app.recordRepository, app.appealRepository) } }
                 )
-                val state by recordsViewModel.uiState.collectAsState()
                 OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
-                    if (state.selectedRecord == null) {
-                        OffensesScreen(viewModel = recordsViewModel)
-                    } else {
-                        OffenseDetailScreen(
-                            viewModel = recordsViewModel,
-                            onBack = { recordsViewModel.clearSelection() },
-                            onFileAppeal = { recordId ->
-                                recordsViewModel.clearSelection()
-                                navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
-                            }
-                        )
-                    }
+                    OffensesScreen(
+                        viewModel = recordsViewModel,
+                        onOffenseClick = { record ->
+                            navController.navigate(Routes.offenseDetailRoute(record.recordId))
+                        }
+                    )
+                }
+            }
+
+            composable(
+                route = Routes.OFFENSE_DETAIL,
+                arguments = listOf(navArgument(Routes.OFFENSE_DETAIL_ARG) { type = NavType.LongType })
+            ) { backStackEntry ->
+                val recordId = backStackEntry.arguments?.getLong(Routes.OFFENSE_DETAIL_ARG) ?: -1L
+                val recordsViewModel: RecordsViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = viewModelFactory { initializer { RecordsViewModel(app.recordRepository, app.appealRepository) } }
+                )
+                LaunchedEffect(recordId) { recordsViewModel.load() }
+                OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
+                    OffenseDetailScreen(
+                        viewModel = recordsViewModel,
+                        recordId = recordId,
+                        onBack = { navController.popBackStack() },
+                        onFileAppeal = { id ->
+                            navController.navigate(Routes.appealsRoute(id))
+                        }
+                    )
                 }
             }
 
@@ -179,7 +198,14 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                             initializer { AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId) }
                         }
                     )
-                    AppealScreen(viewModel = viewModel)
+                    AppealScreen(
+                        viewModel = viewModel,
+                        onSubmitted = {
+                            if (recordId != null) {
+                                navController.popBackStack()
+                            }
+                        }
+                    )
                 }
             }
 
@@ -340,7 +366,7 @@ private fun OsdaTabScaffold(
 }
 
 private fun NavOptionsBuilder.tabNavOptions(navController: NavHostController) {
-    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+    popUpTo(Routes.DASHBOARD) { saveState = true }
     launchSingleTop = true
     restoreState = true
 }
