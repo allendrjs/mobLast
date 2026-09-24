@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.NavType
@@ -55,8 +51,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.OsdaApplication
-import org.rocs.osda.mobile.ui.appeal.AppealScreen
-import org.rocs.osda.mobile.ui.appeal.AppealViewModel
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 import org.rocs.osda.mobile.ui.appeal.AppealScreen
 import org.rocs.osda.mobile.ui.appeal.AppealViewModel
@@ -78,6 +72,8 @@ private object Routes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val OFFENSES = "offenses"
+    const val OFFENSE_DETAIL_ARG = "recordId"
+    const val OFFENSE_DETAIL = "offense_detail/{$OFFENSE_DETAIL_ARG}"
     const val APPEALS = "appeals"
     const val PROFILE = "profile"
     const val CHAT = "chat"
@@ -86,10 +82,10 @@ private object Routes {
 
     fun appealsRoute(recordId: Long? = null): String =
         if (recordId != null) "$APPEALS?$APPEAL_RECORD_ARG=$recordId" else APPEALS
+
+    fun offenseDetailRoute(recordId: Long): String = "offense_detail/$recordId"
 }
 
-// Below this total movement (in px), a touch-and-release on the chat bubble
-// is treated as a tap (fires onClick) rather than a drag (snaps to an edge).
 private const val DRAG_CLICK_THRESHOLD_PX = 24f
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
@@ -132,14 +128,6 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 }
             }
 
-        composable(Routes.DASHBOARD) {
-            OsdaTabScaffold(navController, OsdaTab.DASHBOARD, app) {
-                DashboardScreen(
-                    viewModel = remember {
-                        DashboardViewModel(app.sessionManager, app.enrollmentRepository, app.recordRepository, app.appealRepository)
-                    },
-                    onViewOffenses = { navController.navigate(Routes.OFFENSES) { tabNavOptions(navController) } },
-                    onFileAppeal = { navController.navigate(Routes.appealsRoute()) { tabNavOptions(navController) } }
             composable(Routes.CHAT) { backStackEntry ->
                 val viewModel: ChatViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
@@ -157,70 +145,40 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 )
             }
 
-        composable(Routes.OFFENSES) {
-            val recordsViewModel = remember { RecordsViewModel(app.recordRepository) }
-            val state by recordsViewModel.uiState.collectAsState()
-            OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
-                if (state.selectedRecord == null) {
-                    OffensesScreen(
-                        viewModel = recordsViewModel,
-                        onOpenOffense = { }
-                    )
-                } else {
-                    OffenseDetailScreen(
-                        viewModel = recordsViewModel,
-                        onBack = { recordsViewModel.clearSelection() },
-                        onFileAppeal = { recordId ->
-                            recordsViewModel.clearSelection()
-                            navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
-                        }
-                    )
-                }
-            }
-        }
-
-        composable(
-            route = Routes.APPEALS_PATTERN,
-            arguments = listOf(navArgument(Routes.APPEAL_RECORD_ARG) {
-                type = NavType.LongType
-                defaultValue = -1L
-            })
-        ) { backStackEntry ->
-            val recordId = backStackEntry.arguments?.getLong(Routes.APPEAL_RECORD_ARG)?.takeIf { it > 0 }
-            OsdaTabScaffold(navController, OsdaTab.APPEALS, app) {
-                AppealScreen(
-                    viewModel = remember(recordId) {
-                        AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId)
-                    }
-                )
-            }
-        }
-
-        composable(Routes.PROFILE) {
-            OsdaTabScaffold(navController, OsdaTab.PROFILE, app) {
-                ProfileScreen(
-                    viewModel = remember {
-                        ProfileViewModel(app.sessionManager, app.enrollmentRepository, app.guardianRepository, app.recordRepository, app.appealRepository)
-                    }
             composable(Routes.OFFENSES) { backStackEntry ->
                 val recordsViewModel: RecordsViewModel = viewModel(
                     viewModelStoreOwner = backStackEntry,
                     factory = viewModelFactory { initializer { RecordsViewModel(app.recordRepository, app.appealRepository) } }
                 )
-                val state by recordsViewModel.uiState.collectAsState()
                 OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
-                    if (state.selectedRecord == null) {
-                        OffensesScreen(viewModel = recordsViewModel)
-                    } else {
-                        OffenseDetailScreen(
-                            viewModel = recordsViewModel,
-                            onBack = { recordsViewModel.clearSelection() },
-                            onFileAppeal = { recordId ->
-                                recordsViewModel.clearSelection()
-                                navController.navigate(Routes.appealsRoute(recordId)) { tabNavOptions(navController) }
-                            }
-                        )
-                    }
+                    OffensesScreen(
+                        viewModel = recordsViewModel,
+                        onOffenseClick = { record ->
+                            navController.navigate(Routes.offenseDetailRoute(record.recordId))
+                        }
+                    )
+                }
+            }
+
+            composable(
+                route = Routes.OFFENSE_DETAIL,
+                arguments = listOf(navArgument(Routes.OFFENSE_DETAIL_ARG) { type = NavType.LongType })
+            ) { backStackEntry ->
+                val recordId = backStackEntry.arguments?.getLong(Routes.OFFENSE_DETAIL_ARG) ?: -1L
+                val recordsViewModel: RecordsViewModel = viewModel(
+                    viewModelStoreOwner = backStackEntry,
+                    factory = viewModelFactory { initializer { RecordsViewModel(app.recordRepository, app.appealRepository) } }
+                )
+                LaunchedEffect(recordId) { recordsViewModel.load() }
+                OsdaTabScaffold(navController, OsdaTab.OFFENSES, app) {
+                    OffenseDetailScreen(
+                        viewModel = recordsViewModel,
+                        recordId = recordId,
+                        onBack = { navController.popBackStack() },
+                        onFileAppeal = { id ->
+                            navController.navigate(Routes.appealsRoute(id))
+                        }
+                    )
                 }
             }
 
@@ -233,9 +191,6 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
             ) { backStackEntry ->
                 val recordId = backStackEntry.arguments?.getLong(Routes.APPEAL_RECORD_ARG)?.takeIf { it > 0 }
                 OsdaTabScaffold(navController, OsdaTab.APPEALS, app) {
-                    // Keyed on recordId so navigating between different offenses' appeal
-                    // screens (which reuses this back stack entry under launchSingleTop)
-                    // still gets a fresh ViewModel instead of a stale cached one.
                     val viewModel: AppealViewModel = viewModel(
                         viewModelStoreOwner = backStackEntry,
                         key = "appeal-$recordId",
@@ -243,7 +198,14 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                             initializer { AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId) }
                         }
                     )
-                    AppealScreen(viewModel = viewModel)
+                    AppealScreen(
+                        viewModel = viewModel,
+                        onSubmitted = {
+                            if (recordId != null) {
+                                navController.popBackStack()
+                            }
+                        }
+                    )
                 }
             }
 
@@ -262,13 +224,6 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
             }
         }
 
-        // Free-floating chatbot entry point, similar to iOS's AssistiveTouch
-        // bubble -- persists on top of every screen except Login (no session
-        // yet) and Chat itself (already there), and can be dragged anywhere
-        // on screen rather than being pinned to one corner. The drag state
-        // lives in this always-composed BoxWithConstraints (not inside the
-        // conditionally-shown bubble itself) so the position survives
-        // hiding/showing as you navigate into and out of Chat.
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val density = LocalDensity.current
             val fabSizePx = with(density) { 56.dp.toPx() }
@@ -279,12 +234,6 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
             val minY = marginPx
             val maxY = (with(density) { maxHeight.toPx() } - fabSizePx - marginPx).coerceAtLeast(minY)
 
-            // Held as MutableState objects (not unwrapped Float + callback)
-            // so the drag handler below can read/write the *live* value at
-            // any moment. An unwrapped value passed as a plain parameter
-            // gets frozen at whatever it was when this gesture coroutine
-            // was launched, which was the root cause of the FAB snapping
-            // back to a stale position after dragging.
             val offsetX = remember { mutableStateOf(maxX) }
             val offsetY = remember {
                 mutableStateOf((maxY - with(density) { 96.dp.toPx() }).coerceIn(minY, maxY))
@@ -302,6 +251,68 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DraggableChatFab(
+    offsetX: MutableState<Float>,
+    offsetY: MutableState<Float>,
+    minX: Float,
+    maxX: Float,
+    minY: Float,
+    maxY: Float,
+    onClick: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
+            .size(56.dp)
+            .pointerInput(minX, maxX, minY, maxY) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    var totalDrag = 0f
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+
+                        val dragAmount = change.position - change.previousPosition
+                        if (dragAmount.x != 0f || dragAmount.y != 0f) {
+                            change.consume()
+                            totalDrag += abs(dragAmount.x) + abs(dragAmount.y)
+                            offsetX.value = (offsetX.value + dragAmount.x).coerceIn(minX, maxX)
+                            offsetY.value = (offsetY.value + dragAmount.y).coerceIn(minY, maxY)
+                        }
+                    }
+
+                    if (totalDrag < DRAG_CLICK_THRESHOLD_PX) {
+                        onClick()
+                    } else {
+                        val start = offsetX.value
+                        val target = if (start < (minX + maxX) / 2) minX else maxX
+                        scope.launch {
+                            animate(
+                                initialValue = start,
+                                targetValue = target,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                            ) { value, _ -> offsetX.value = value }
+                        }
+                    }
+                }
+            }
+            .shadow(elevation = 6.dp, shape = CircleShape)
+            .background(color = OsdaTokens.blue, shape = CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.AutoAwesome,
+            contentDescription = "Ask the Chatbot",
+            tint = Color.White
+        )
     }
 }
 
@@ -442,7 +453,7 @@ private fun OsdaTabScaffold(
 }
 
 private fun NavOptionsBuilder.tabNavOptions(navController: NavHostController) {
-    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+    popUpTo(Routes.DASHBOARD) { saveState = true }
     launchSingleTop = true
     restoreState = true
 }

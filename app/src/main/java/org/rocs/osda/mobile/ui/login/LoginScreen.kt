@@ -89,7 +89,7 @@ fun LoginScreen(
             )
 
             Text(
-                "STUDENT ID",
+                "STUDENT ID *",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -105,7 +105,7 @@ fun LoginScreen(
             )
 
             Text(
-                "PASSWORD",
+                "PASSWORD *",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

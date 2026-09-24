@@ -89,10 +89,6 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
             ) {
                 items(state.quickReplies) { reply ->
                     AssistChip(
-                        // "View My Appeals"/"View My Offenses" leave the chat
-                        // screen entirely, so they're handled here as real
-                        // navigation instead of going through the ViewModel
-                        // like the other chips.
                         onClick = {
                             when (reply.id) {
                                 "view_appeals" -> onViewAppeals()

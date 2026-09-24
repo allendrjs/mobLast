@@ -13,8 +13,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val app = application as OsdaApplication
         setContent {
-            // App-only preference (set via the Appearance switch on
-            // Profile) -- not the device's system dark-mode setting.
             val darkMode by app.themePreferences.darkModeFlow.collectAsState(initial = false)
             OsdaMobileTheme(darkTheme = darkMode) {
                 OsdaNavHost(app = app)

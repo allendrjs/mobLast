@@ -21,21 +21,18 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.rocs.osda.mobile.data.model.Appeal
-import org.rocs.osda.mobile.ui.common.FilterPill
-import org.rocs.osda.mobile.ui.common.OsdaCard
-import org.rocs.osda.mobile.ui.common.PrimaryButton
-import org.rocs.osda.mobile.ui.common.StatusColors
-import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.OsdaCard
 import org.rocs.osda.mobile.ui.common.PrimaryButton
 import org.rocs.osda.mobile.ui.common.FilterPill
@@ -47,8 +44,29 @@ import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppealScreen(viewModel: AppealViewModel) {
+fun AppealScreen(viewModel: AppealViewModel, onSubmitted: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsState()
+
+    if (viewModel.isFilingMode) {
+        FileAppealContent(viewModel, onSubmitted)
+    } else {
+        MyAppealsContent(viewModel)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Unit) {
+    val state by viewModel.uiState.collectAsState()
+    val offenseRecord = state.records.firstOrNull { it.recordId == state.selectedRecordId }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.submitSuccess) {
+        if (state.submitSuccess) {
+            delay(900)
+            onSubmitted()
+        }
+    }
 
     if (viewModel.isFilingMode) {
         FileAppealContent(viewModel)
@@ -81,74 +99,43 @@ private fun FileAppealContent(viewModel: AppealViewModel) {
 
             OsdaCard(modifier = Modifier.padding(bottom = 20.dp)) {
                 Text("Offense", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 8.dp))
-
-                if (state.records.isEmpty()) {
-                    Text(
-                        "No offenses on file to appeal.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        state.records.forEach { record ->
-                            FilterPill(
-                                text = "${record.offense.offense} • ${record.dateOfViolation}",
-                                selected = state.selectedRecordId == record.recordId,
-                                onClick = { viewModel.selectRecord(record.recordId) }
-                            )
-                        }
-                    }
-                }
                 Text(
                     if (offenseRecord != null) "${offenseRecord.offense.offense} • ${offenseRecord.dateOfViolation}" else "Offense not found",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
-                Text("Message", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-                OutlinedTextField(
-                    value = state.message,
-                    onValueChange = viewModel::onMessageChange,
-                    placeholder = { Text("Explain why you're appealing this offense...") },
-                    modifier = Modifier.fillMaxWidth().height(120.dp)
-                )
-
-                state.submitError?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-                }
                 if (state.submitSuccess) {
-                    Text("Appeal submitted successfully.", color = OsdaTokens.green, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-                }
+                    Text(
+                        "Appeal submitted successfully. Returning to the offense...",
+                        color = OsdaTokens.green,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                } else {
+                    Text("Message *", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                    OutlinedTextField(
+                        value = state.message,
+                        onValueChange = viewModel::onMessageChange,
+                        placeholder = { Text("Explain why you're appealing this offense...") },
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    )
 
-                Spacer(Modifier.height(16.dp))
-                PrimaryButton(
-                    text = if (state.isSubmitting) "Submitting..." else "Submit Appeal",
-                    enabled = !state.isSubmitting,
-                    onClick = viewModel::submit
-                )
-            }
-
-            Text("Appeal History", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 12.dp))
-
-            when {
-                state.isLoading && state.appeals.isEmpty() -> Text("Loading...")
-                state.error != null -> Text(state.error ?: "Something went wrong.", color = MaterialTheme.colorScheme.error)
-                state.appeals.isEmpty() -> Text(
-                    "You haven't filed any appeals yet.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.appeals) { appeal -> AppealHistoryCard(appeal) }
-                    enabled = !state.isSubmitting && !state.submitSuccess,
-                    onClick = {
-                        // Validate before showing the confirm dialog, not after --
-                        // otherwise a user can confirm "this can't be edited" and
-                        // only then discover their message was required.
-                        if (viewModel.validateBeforeConfirm()) {
-                            showConfirmDialog = true
-                        }
+                    state.submitError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                     }
-                )
+
+                    Spacer(Modifier.height(16.dp))
+                    PrimaryButton(
+                        text = if (state.isSubmitting) "Submitting..." else "Submit Appeal",
+                        enabled = !state.isSubmitting,
+                        onClick = {
+                            if (viewModel.validateBeforeConfirm()) {
+                                showConfirmDialog = true
+                            }
+                        }
+                    )
+                }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -237,7 +224,6 @@ private fun MyAppealsContent(viewModel: AppealViewModel) {
 private fun AppealHistoryCard(appeal: Appeal) {
     val (fg, bg) = StatusColors.forAppeal(appeal.status)
     OsdaCard {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(
             "APPEAL ID: AP-${appeal.appealId.toString().padStart(4, '0')}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -253,16 +239,6 @@ private fun AppealHistoryCard(appeal: Appeal) {
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleSmall
             )
-            StatusPill(appeal.status.replaceFirstChar { it.uppercase() }, fg, bg)
-        }
-        Text(
-            appeal.message,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 6.dp)
-        )
-        Text(
-            "Filed: ${appeal.dateFiled ?: "—"}",
             StatusPill(appeal.status.toDisplayStatus(), fg, bg)
         }
         Text(
@@ -298,5 +274,4 @@ private fun AppealHistoryCard(appeal: Appeal) {
             )
         }
     }
-}
 }

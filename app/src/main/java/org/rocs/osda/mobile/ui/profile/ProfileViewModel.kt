@@ -42,8 +42,6 @@ class ProfileViewModel(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    // App-only preference (Appearance switch below) -- independent of the
-    // device's own system dark-mode setting.
     val darkMode: StateFlow<Boolean> = themePreferences.darkModeFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 

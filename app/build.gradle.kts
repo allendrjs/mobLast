@@ -7,9 +7,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// Release signing credentials live in keystore.properties (gitignored, never
-// committed) instead of being hardcoded here. See keystore.properties.example
-// for the expected format.
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties()
 val hasKeystoreProperties = keystorePropertiesFile.exists()
@@ -23,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "org.rocs.osda.mobile"
-        minSdk = 26
+        minSdk = 21
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
@@ -53,10 +50,7 @@ android {
             if (hasKeystoreProperties) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            // Real device on the same Wi-Fi as the backend -- replace with
-            // your laptop's actual LAN IPv4 address (ipconfig on Windows,
-            // look for "IPv4 Address" under your Wi-Fi adapter).
-            buildConfigField("String", "API_BASE_URL", "\"http://192.168.1.100:8080/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://rc-osd.tech/\"")
         }
     }
 

@@ -27,14 +27,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Renders a (small) subset of markdown -- the subset the chatbot's system
- * prompt actually produces -- as real Compose UI instead of dumping raw
- * "**", "|", "---" characters into a plain Text like before. Deliberately
- * not a general-purpose markdown engine: just enough to cover bold/italic/
- * inline code, headings, bullet lists, and pipe tables, which is everything
- * the model has been observed to emit.
- */
 @Composable
 fun MarkdownText(
     text: String,
@@ -191,11 +183,6 @@ private fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
 
 private val inlineRegex = Regex("""\*\*(.+?)\*\*|`(.+?)`|\*(.+?)\*""")
 
-// codeHighlight is derived from the text's own foreground color (rather
-// than a fixed Color.Black) so the inline-code background stays visible
-// against both a light and a dark chat bubble -- a flat black tint at low
-// alpha reads as a faint light-gray highlight in light mode but is nearly
-// invisible over a dark surface in dark mode.
 private fun inlineAnnotatedString(text: String, textColor: Color): AnnotatedString = buildAnnotatedString {
     val codeHighlight = textColor.copy(alpha = 0.12f)
     var lastIndex = 0

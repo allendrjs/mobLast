@@ -1,6 +1,7 @@
 package org.rocs.osda.mobile.ui.records
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,21 +33,28 @@ import org.rocs.osda.mobile.ui.common.toDisplayStatus
 @Composable
 fun OffenseDetailScreen(
     viewModel: RecordsViewModel,
+    recordId: Long,
     onBack: () -> Unit,
     onFileAppeal: (recordId: Long) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
-    val record = state.selectedRecord
+    val record = state.records.firstOrNull { it.recordId == recordId }
 
     Column(modifier = Modifier.fillMaxSize()) {
         BackHeader("Offense Details", onBack)
 
         if (record == null) {
-            Text(
-                "No offense selected.",
-                modifier = Modifier.padding(20.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary)
+                }
+            } else {
+                Text(
+                    "This offense couldn't be found.",
+                    modifier = Modifier.padding(20.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             return@Column
         }
 
@@ -100,12 +111,10 @@ fun OffenseDetailScreen(
             )
             if (!canAppeal) {
                 Text(
-                    if (record.status.uppercase() == "APPEALED")
+                    if (record.status.uppercase() == "PROCESSING" || alreadyAppealed)
                         "This offense is already under appeal review."
-                    else if (alreadyAppealed)
-                        "You already have an appeal on file for this offense."
                     else
-                        "This offense is ${record.status.lowercase()} and can no longer be appealed.",
+                        "This offense is ${record.status.toDisplayStatus().lowercase()} and can no longer be appealed.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,

@@ -15,7 +15,6 @@ import org.rocs.osda.mobile.data.repository.ChatRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 
-/** A tappable option shown below the chat transcript, e.g. "File an Appeal" or a specific offense. */
 data class QuickReply(val id: String, val label: String)
 
 data class ChatUiState(
@@ -26,15 +25,6 @@ data class ChatUiState(
     val quickReplies: List<QuickReply> = emptyList()
 )
 
-/**
- * Tracks the student's place inside the guided "File an Appeal" flow. This
- * is deliberately NOT driven by the LLM -- Ollama only ever answers
- * open-ended handbook questions. Once the flow starts, every step (which
- * offense, what message, whether to submit) is handled locally by this
- * ViewModel and the actual submission goes through the same
- * AppealRepository.submitAppeal() the Appeals tab uses, so a guided-in-chat
- * appeal is exactly as reliable as one filed the normal way.
- */
 private sealed class AppealFlowStep {
     data class PickingOffense(val eligible: List<OffenseRecord>) : AppealFlowStep()
     data class WritingMessage(val record: OffenseRecord) : AppealFlowStep()
@@ -58,7 +48,6 @@ class ChatViewModel(
         _uiState.value = _uiState.value.copy(input = value, error = null)
     }
 
-    /** Handles a typed message, routing it to the active guided-flow step if there is one. */
     fun send() {
         val state = _uiState.value
         val message = state.input.trim()
@@ -106,7 +95,6 @@ class ChatViewModel(
         }
     }
 
-    /** Handles a tap on any chip below the transcript -- starter actions, an offense, or a flow confirm/cancel. */
     fun onQuickReplySelected(reply: QuickReply) {
         if (_uiState.value.isSending) return
         appendUserMessage(reply.label)
@@ -124,27 +112,44 @@ class ChatViewModel(
                 if (record != null) handleOffensePicked(record)
             }
             reply.id.startsWith("topic_") -> {
-                // The bubble shows the short label (e.g. "Dress Code"), but the
-                // actual question sent to Ollama is the full phrasing below --
-                // the backend never sees the label, only this message + history.
                 val history = _uiState.value.messages.dropLast(1)
                 dispatchToBot(topicQuestionFor(reply.id), history)
             }
         }
     }
 
-    /**
-     * Offers the choice this ViewModel now supports before actually starting
-     * anything: guided step-by-step in chat, or leave chat and file it the
-     * normal way (pick the offense on the Offenses tab, same as before this
-     * feature existed).
-     */
     private fun offerAppealChoice() {
-        appendBotMessage("Would you like to file it right here in chat, or go do it yourself in the app?")
-        setQuickReplies(listOf(
-            QuickReply("appeal_in_chat", "File Here in Chat"),
-            QuickReply("appeal_go_manual", "Go to Offenses")
-        ))
+        _uiState.value = _uiState.value.copy(isSending = true)
+        viewModelScope.launch {
+            try {
+                val records = recordRepository.getMyRecords()
+                val appeals = appealRepository.getMyAppeals()
+                val alreadyAppealed = appeals.mapNotNull { it.record?.recordId }.toSet()
+                val eligible = records.filter {
+                    it.status.equals("PENDING", ignoreCase = true) && it.recordId !in alreadyAppealed
+                }
+                _uiState.value = _uiState.value.copy(isSending = false)
+                if (eligible.isEmpty()) {
+                    appendBotMessage(
+                        if (records.isEmpty())
+                            "You don't have any offenses on file, so there's nothing to appeal."
+                        else
+                            "You don't currently have any offenses that are eligible for an appeal."
+                    )
+                    setQuickReplies(starterQuickReplies())
+                } else {
+                    appendBotMessage("Would you like to file it right here in chat, or go do it yourself in the app?")
+                    setQuickReplies(listOf(
+                        QuickReply("appeal_in_chat", "File Here in Chat"),
+                        QuickReply("appeal_go_manual", "Go to Offenses")
+                    ))
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSending = false)
+                appendBotMessage(e.toUserMessage("Couldn't check your offenses right now. Please try again."))
+                setQuickReplies(starterQuickReplies())
+            }
+        }
     }
 
     private fun startAppealFlow() {
@@ -155,9 +160,6 @@ class ChatViewModel(
                 val records = recordRepository.getMyRecords()
                 val appeals = appealRepository.getMyAppeals()
                 val alreadyAppealed = appeals.mapNotNull { it.record?.recordId }.toSet()
-                // Same eligibility rule as RecordsUiState.hasActiveAppeal / AppealViewModel:
-                // must be PENDING and not already have an appeal on file, regardless of
-                // that appeal's status.
                 val eligible = records.filter {
                     it.status.equals("PENDING", ignoreCase = true) && it.recordId !in alreadyAppealed
                 }
@@ -181,7 +183,6 @@ class ChatViewModel(
         }
     }
 
-    /** Read-only lookup, not an LLM call -- counts come straight from the same repositories the Offenses/Appeals tabs use. */
     private fun checkStatus() {
         _uiState.value = _uiState.value.copy(isSending = true)
         viewModelScope.launch {
@@ -253,8 +254,6 @@ class ChatViewModel(
             try {
                 val response = chatRepository.ask(message, history)
                 appendBotMessage(response.reply)
-                // Re-offer the starter chips after a normal answer so the
-                // student can keep tapping instead of typing every turn.
                 _uiState.value = _uiState.value.copy(isSending = false, quickReplies = starterQuickReplies())
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

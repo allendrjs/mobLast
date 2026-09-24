@@ -19,29 +19,25 @@ data class RecordsUiState(
     val records: List<OffenseRecord> = emptyList(),
     val appeals: List<Appeal> = emptyList(),
     val filter: OffenseFilter = OffenseFilter.ALL,
-    val selectedRecord: OffenseRecord? = null,
     val error: String? = null
 ) {
     val filteredRecords: List<OffenseRecord>
         get() = when (filter) {
             OffenseFilter.ALL -> records
-            OffenseFilter.ACTIVE -> records.filter { it.status.uppercase() != "RESOLVED" }
-            OffenseFilter.RESOLVED -> records.filter { it.status.uppercase() == "RESOLVED" }
+            OffenseFilter.ACTIVE -> records.filterNot { it.isClosed() }
+            OffenseFilter.RESOLVED -> records.filter { it.isClosed() }
         }
 
     val totalCount: Int get() = records.size
-    val activeCount: Int get() = records.count { it.status.uppercase() != "RESOLVED" }
-    val resolvedCount: Int get() = records.count { it.status.uppercase() == "RESOLVED" }
+    val activeCount: Int get() = records.count { !it.isClosed() }
+    val resolvedCount: Int get() = records.count { it.isClosed() }
 
-    /**
-     * True if this record already has an appeal on file, regardless of its
-     * status. The backend allows exactly one appeal per offense record --
-     * filing another would fail with a 409 even if the existing appeal was
-     * already APPROVED or DENIED (see AppealServiceImpl.submitAppeal).
-     */
     fun hasActiveAppeal(recordId: Long): Boolean =
         appeals.any { it.record?.recordId == recordId }
 }
+
+private fun OffenseRecord.isClosed(): Boolean =
+    status.uppercase() in setOf("RESOLVED", "APPROVED")
 
 class RecordsViewModel(
     private val recordRepository: RecordRepository,
@@ -57,7 +53,6 @@ class RecordsViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                // Most recently violated offense on top.
                 val records = recordRepository.getMyRecords().sortedByDescending { it.dateOfViolation }
                 val appeals = runCatching { appealRepository.getMyAppeals() }.getOrDefault(emptyList())
                 _uiState.value = _uiState.value.copy(isLoading = false, records = records, appeals = appeals)
@@ -72,13 +67,5 @@ class RecordsViewModel(
 
     fun setFilter(filter: OffenseFilter) {
         _uiState.value = _uiState.value.copy(filter = filter)
-    }
-
-    fun selectRecord(record: OffenseRecord) {
-        _uiState.value = _uiState.value.copy(selectedRecord = record)
-    }
-
-    fun clearSelection() {
-        _uiState.value = _uiState.value.copy(selectedRecord = null)
     }
 }

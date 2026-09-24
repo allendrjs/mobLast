@@ -110,10 +110,6 @@ fun FilterPill(text: String, selected: Boolean, onClick: () -> Unit) {
             .defaultMinSize(minHeight = 48.dp)
             .background(bg, RoundedCornerShape(OsdaTokens.pillRadius))
             .let { if (!selected) it.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(OsdaTokens.pillRadius)) else it }
-            // selectable() (rather than plain clickable()) reports Role.Tab
-            // and the selected state to accessibility services, so a
-            // screen-reader user can tell which filter is currently active --
-            // clickable() alone only exposes the tap action, not the state.
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
@@ -142,9 +138,6 @@ fun OsdaCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            // Groups every Text/child inside as one accessibility node, so
-            // TalkBack announces a card's content as a single swipe stop
-            // instead of forcing a separate swipe per line of text.
             .semantics(mergeDescendants = true) {}
             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(OsdaTokens.cardRadius))
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(OsdaTokens.cardRadius))
@@ -178,6 +171,8 @@ fun StatRow(label: String, value: String) {
         Text(value, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
     }
 }
+fun String.toDisplayStatus(): String =
+    lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 
 /**
  * Backend status strings come back SHOUTING_CASE ("PENDING", "APPEALED",
@@ -195,14 +190,15 @@ object StatusColors {
     @Composable
     fun forRecord(status: String): Pair<Color, Color> = when (status.uppercase()) {
         "RESOLVED" -> OsdaTokens.green to OsdaTokens.greenBg
-        "APPEALED" -> OsdaTokens.blue to OsdaTokens.blueBg
-        else -> OsdaTokens.amber to OsdaTokens.amberBg // PENDING and anything else reads as "active"
+        "APPROVED" -> OsdaTokens.green to OsdaTokens.greenBg
+        "PROCESSING" -> OsdaTokens.blue to OsdaTokens.blueBg
+        else -> OsdaTokens.amber to OsdaTokens.amberBg
     }
 
     @Composable
     fun forAppeal(status: String): Pair<Color, Color> = when (status.uppercase()) {
         "APPROVED" -> OsdaTokens.green to OsdaTokens.greenBg
         "DENIED" -> OsdaTokens.red to OsdaTokens.redBg
-        else -> OsdaTokens.amber to OsdaTokens.amberBg // PENDING, UNDER_REVIEW
+        else -> OsdaTokens.amber to OsdaTokens.amberBg
     }
 }
