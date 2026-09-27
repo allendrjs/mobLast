@@ -62,10 +62,10 @@ fun DashboardScreen(
                         .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
                         .padding(18.dp)
                 ) {
-                    Text("Welcome back, $displayName", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Welcome back, $displayName", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(
                         "$program  •  Student ID ${state.studentId ?: "—"}",
-                        color = OsdaTokens.primaryMuted,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
                     )

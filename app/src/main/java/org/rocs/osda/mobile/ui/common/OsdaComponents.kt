@@ -153,7 +153,7 @@ fun InitialsBadge(initials: String, modifier: Modifier = Modifier) {
         modifier = modifier
             .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
     ) {
-        Text(initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(initials, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
 
