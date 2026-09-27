@@ -40,8 +40,11 @@ fun HandbookScreen(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadIfNeeded() }
-
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         BackHeader("Student Handbook", onBack)
 
         Column(modifier = Modifier.fillMaxSize().weight(1f).padding(horizontal = 20.dp)) {
