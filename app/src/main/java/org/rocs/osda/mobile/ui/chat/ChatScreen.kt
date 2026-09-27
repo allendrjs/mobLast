@@ -36,7 +36,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.rocs.osda.mobile.data.model.ChatMessage
 import org.rocs.osda.mobile.ui.common.BackHeader
@@ -180,7 +179,7 @@ private fun MessageBubble(message: ChatMessage) {
         ) {
             MarkdownText(
                 text = message.content,
-                color = if (isUser) Color.White else MaterialTheme.colorScheme.onBackground,
+                color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyMedium
             )
         }

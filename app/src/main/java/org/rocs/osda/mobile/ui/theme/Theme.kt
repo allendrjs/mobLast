@@ -55,8 +55,14 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = OsdaPrimary,
-    onPrimary = OsdaSurface,
+    // OsdaPrimary (#14123A) is a near-black navy that works as text/icon color on
+    // Light mode's white/near-white surfaces, but is nearly invisible against Dark
+    // mode's dark surfaces (e.g. the bottom nav's selected item, or any component
+    // that draws text/icons in `colorScheme.primary`). Use the lighter, already-
+    // defined OsdaPrimaryMuted instead, with a dark onPrimary for contrast on any
+    // primary-colored filled surface.
+    primary = OsdaPrimaryMuted,
+    onPrimary = OsdaPrimary,
     background = OsdaBackgroundDark,
     onBackground = OsdaHeadingDark,
     surface = OsdaSurfaceDark,
