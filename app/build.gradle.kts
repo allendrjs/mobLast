@@ -5,6 +5,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.firebase.appdistribution")
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -51,6 +52,17 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
             buildConfigField("String", "API_BASE_URL", "\"https://rc-osd.tech/\"")
+
+            // Firebase App Distribution -- see docs/APP_DISTRIBUTION.md for
+            // one-time setup (Firebase project, App ID, tester group,
+            // `firebase login`). Fill in the real App ID before running
+            // `./gradlew assembleRelease appDistributionUploadRelease`.
+            firebaseAppDistribution {
+                appId = project.findProperty("firebaseAppId") as String?
+                    ?: "REPLACE_WITH_FIREBASE_APP_ID"
+                releaseNotes = "Build from ${java.time.LocalDate.now()}"
+                groups = "testers"
+            }
         }
     }
 

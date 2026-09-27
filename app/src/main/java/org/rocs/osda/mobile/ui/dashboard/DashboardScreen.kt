@@ -34,7 +34,8 @@ fun DashboardScreen(
     viewModel: DashboardViewModel,
     onViewOffenses: () -> Unit,
     onFileAppeal: () -> Unit,
-    onOpenChat: () -> Unit
+    onOpenChat: () -> Unit,
+    onOpenHandbook: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val enrollment = state.enrollment
@@ -98,6 +99,7 @@ fun DashboardScreen(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 QuickActionRow("View Offenses", "See your disciplinary records", onClick = onViewOffenses)
                 QuickActionRow("File an Appeal", "Request a review of a case", onClick = onFileAppeal)
+                QuickActionRow("Student Handbook", "Read the policies for your department", onClick = onOpenHandbook)
                 QuickActionRow("Ask the Chatbot", "Get answers about your offenses and appeals", onClick = onOpenChat)
             }
 
