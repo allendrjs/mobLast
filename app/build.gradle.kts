@@ -1,5 +1,7 @@
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 import java.util.Properties
 import java.io.FileInputStream
+import java.time.LocalDate
 
 plugins {
     id("com.android.application")
@@ -48,6 +50,7 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
             buildConfigField("String", "API_BASE_URL", "\"https://rc-osd.tech/\"")
+            signingConfig = signingConfigs.getByName("debug")
 
             // Firebase App Distribution -- see docs/APP_DISTRIBUTION.md for
             // one-time setup (Firebase project, App ID, tester group,
@@ -56,7 +59,7 @@ android {
             firebaseAppDistribution {
                 appId = project.findProperty("firebaseAppId") as String?
                     ?: "REPLACE_WITH_FIREBASE_APP_ID"
-                releaseNotes = "Build from ${java.time.LocalDate.now()}"
+                releaseNotes = "Build from ${LocalDate.now()}"
                 groups = "testers"
             }
         }

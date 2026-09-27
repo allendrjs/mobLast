@@ -193,12 +193,12 @@ class ChatViewModel(
                 val pendingAppeals = appeals.count { it.isPending() }
                 appendBotMessage(
                     "You have ${records.size} offense(s) on file (${activeOffenses} still active), " +
-                        "and ${appeals.size} appeal(s) filed (${pendingAppeals} awaiting a decision)."
+                            "and ${appeals.size} appeal(s) filed (${pendingAppeals} awaiting a decision)."
                 )
                 _uiState.value = _uiState.value.copy(isSending = false)
                 setQuickReplies(
                     listOf(QuickReply("view_offenses", "View My Offenses"), QuickReply("view_appeals", "View My Appeals")) +
-                        starterQuickReplies()
+                            starterQuickReplies()
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false)
