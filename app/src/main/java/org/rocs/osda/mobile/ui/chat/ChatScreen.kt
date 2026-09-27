@@ -180,7 +180,7 @@ private fun MessageBubble(message: ChatMessage) {
         ) {
             MarkdownText(
                 text = message.content,
-                color = if (isUser) Color.White else MaterialTheme.colorScheme.onBackground,
+                color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyMedium
             )
         }

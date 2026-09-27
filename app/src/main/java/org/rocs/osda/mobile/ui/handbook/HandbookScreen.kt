@@ -114,6 +114,7 @@ private fun HandbookSectionCard(title: String?, content: String) {
         ) {
             Text(
                 title ?: "Handbook Section",
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f)
