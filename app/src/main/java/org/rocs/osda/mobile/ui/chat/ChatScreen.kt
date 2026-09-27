@@ -52,7 +52,11 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         BackHeader("Ask the Chatbot", onBack)
 
         if (state.messages.isEmpty()) {
