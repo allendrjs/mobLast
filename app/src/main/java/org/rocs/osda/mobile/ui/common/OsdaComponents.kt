@@ -148,6 +148,10 @@ fun OsdaCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
 
 @Composable
 fun InitialsBadge(initials: String, modifier: Modifier = Modifier) {
+    // Solid primary (dark navy) background with white text -- the same
+    // pairing PrimaryButton uses -- instead of white text over a
+    // low-alpha lavender fill, which didn't have enough contrast against
+    // the light app background to reliably meet WCAG AA for text this size.
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -174,7 +178,8 @@ object StatusColors {
     @Composable
     fun forRecord(status: String): Pair<Color, Color> = when (status.uppercase()) {
         "RESOLVED" -> OsdaTokens.green to OsdaTokens.greenBg
-        "APPEALED" -> OsdaTokens.blue to OsdaTokens.blueBg
+        "APPROVED" -> OsdaTokens.green to OsdaTokens.greenBg
+        "PROCESSING" -> OsdaTokens.blue to OsdaTokens.blueBg
         else -> OsdaTokens.amber to OsdaTokens.amberBg
     }
 

@@ -119,11 +119,37 @@ class ChatViewModel(
     }
 
     private fun offerAppealChoice() {
-        appendBotMessage("Would you like to file it right here in chat, or go do it yourself in the app?")
-        setQuickReplies(listOf(
-            QuickReply("appeal_in_chat", "File Here in Chat"),
-            QuickReply("appeal_go_manual", "Go to Offenses")
-        ))
+        _uiState.value = _uiState.value.copy(isSending = true)
+        viewModelScope.launch {
+            try {
+                val records = recordRepository.getMyRecords()
+                val appeals = appealRepository.getMyAppeals()
+                val alreadyAppealed = appeals.mapNotNull { it.record?.recordId }.toSet()
+                val eligible = records.filter {
+                    it.status.equals("PENDING", ignoreCase = true) && it.recordId !in alreadyAppealed
+                }
+                _uiState.value = _uiState.value.copy(isSending = false)
+                if (eligible.isEmpty()) {
+                    appendBotMessage(
+                        if (records.isEmpty())
+                            "You don't have any offenses on file, so there's nothing to appeal."
+                        else
+                            "You don't currently have any offenses that are eligible for an appeal."
+                    )
+                    setQuickReplies(starterQuickReplies())
+                } else {
+                    appendBotMessage("Would you like to file it right here in chat, or go do it yourself in the app?")
+                    setQuickReplies(listOf(
+                        QuickReply("appeal_in_chat", "File Here in Chat"),
+                        QuickReply("appeal_go_manual", "Go to Offenses")
+                    ))
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isSending = false)
+                appendBotMessage(e.toUserMessage("Couldn't check your offenses right now. Please try again."))
+                setQuickReplies(starterQuickReplies())
+            }
+        }
     }
 
     private fun startAppealFlow() {
@@ -167,12 +193,12 @@ class ChatViewModel(
                 val pendingAppeals = appeals.count { it.isPending() }
                 appendBotMessage(
                     "You have ${records.size} offense(s) on file (${activeOffenses} still active), " +
-                        "and ${appeals.size} appeal(s) filed (${pendingAppeals} awaiting a decision)."
+                            "and ${appeals.size} appeal(s) filed (${pendingAppeals} awaiting a decision)."
                 )
                 _uiState.value = _uiState.value.copy(isSending = false)
                 setQuickReplies(
                     listOf(QuickReply("view_offenses", "View My Offenses"), QuickReply("view_appeals", "View My Appeals")) +
-                        starterQuickReplies()
+                            starterQuickReplies()
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isSending = false)

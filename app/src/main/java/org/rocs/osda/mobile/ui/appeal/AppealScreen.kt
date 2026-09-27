@@ -21,11 +21,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -42,8 +44,29 @@ import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppealScreen(viewModel: AppealViewModel) {
+fun AppealScreen(viewModel: AppealViewModel, onSubmitted: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsState()
+
+    if (viewModel.isFilingMode) {
+        FileAppealContent(viewModel, onSubmitted)
+    } else {
+        MyAppealsContent(viewModel)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Unit) {
+    val state by viewModel.uiState.collectAsState()
+    val offenseRecord = state.records.firstOrNull { it.recordId == state.selectedRecordId }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.submitSuccess) {
+        if (state.submitSuccess) {
+            delay(900)
+            onSubmitted()
+        }
+    }
 
     if (viewModel.isFilingMode) {
         FileAppealContent(viewModel)
@@ -82,31 +105,37 @@ private fun FileAppealContent(viewModel: AppealViewModel) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
-                Text("Message", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-                OutlinedTextField(
-                    value = state.message,
-                    onValueChange = viewModel::onMessageChange,
-                    placeholder = { Text("Explain why you're appealing this offense...") },
-                    modifier = Modifier.fillMaxWidth().height(120.dp)
-                )
-
-                state.submitError?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-                }
                 if (state.submitSuccess) {
-                    Text("Appeal submitted successfully.", color = OsdaTokens.green, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-                }
+                    Text(
+                        "Appeal submitted successfully. Returning to the offense...",
+                        color = OsdaTokens.green,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                } else {
+                    Text("Message *", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+                    OutlinedTextField(
+                        value = state.message,
+                        onValueChange = viewModel::onMessageChange,
+                        placeholder = { Text("Explain why you're appealing this offense...") },
+                        modifier = Modifier.fillMaxWidth().height(120.dp)
+                    )
 
-                Spacer(Modifier.height(16.dp))
-                PrimaryButton(
-                    text = if (state.isSubmitting) "Submitting..." else "Submit Appeal",
-                    enabled = !state.isSubmitting && !state.submitSuccess,
-                    onClick = {
-                        if (viewModel.validateBeforeConfirm()) {
-                            showConfirmDialog = true
-                        }
+                    state.submitError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                     }
-                )
+
+                    Spacer(Modifier.height(16.dp))
+                    PrimaryButton(
+                        text = if (state.isSubmitting) "Submitting..." else "Submit Appeal",
+                        enabled = !state.isSubmitting,
+                        onClick = {
+                            if (viewModel.validateBeforeConfirm()) {
+                                showConfirmDialog = true
+                            }
+                        }
+                    )
+                }
             }
 
             Spacer(Modifier.height(20.dp))

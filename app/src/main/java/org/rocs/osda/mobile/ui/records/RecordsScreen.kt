@@ -34,7 +34,7 @@ import org.rocs.osda.mobile.ui.theme.OsdaTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OffensesScreen(viewModel: RecordsViewModel) {
+fun OffensesScreen(viewModel: RecordsViewModel, onOffenseClick: (OffenseRecord) -> Unit) {
     val state by viewModel.uiState.collectAsState()
 
     PullToRefreshBox(
@@ -78,7 +78,7 @@ fun OffensesScreen(viewModel: RecordsViewModel) {
                 )
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(state.filteredRecords) { record ->
-                        OffenseCard(record) { viewModel.selectRecord(record) }
+                        OffenseCard(record) { onOffenseClick(record) }
                     }
                 }
             }

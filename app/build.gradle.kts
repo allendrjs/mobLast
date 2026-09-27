@@ -1,10 +1,13 @@
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 import java.util.Properties
 import java.io.FileInputStream
+import java.time.LocalDate
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.firebase.appdistribution")
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -20,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "org.rocs.osda.mobile"
-        minSdk = 26
+        minSdk = 21
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
@@ -47,6 +50,13 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
             buildConfigField("String", "API_BASE_URL", "\"https://rc-osd.tech/\"")
+            firebaseAppDistribution {
+                appId = project.findProperty("firebaseAppId") as String?
+                    ?: "REPLACE_WITH_FIREBASE_APP_ID"
+
+                releaseNotes = "Build from ${LocalDate.now()}"
+                groups = "testers"
+            }
         }
     }
 
