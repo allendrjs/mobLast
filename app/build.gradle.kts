@@ -50,6 +50,7 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
             buildConfigField("String", "API_BASE_URL", "\"https://rc-osd.tech/\"")
+            signingConfig = signingConfigs.getByName("debug")
             firebaseAppDistribution {
                 appId = project.findProperty("firebaseAppId") as String?
                     ?: "REPLACE_WITH_FIREBASE_APP_ID"

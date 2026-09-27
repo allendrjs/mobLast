@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.rocs.osda.mobile.ui.common.PrimaryButton
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import org.rocs.osda.mobile.R
 
 @Composable
 fun LoginScreen(
@@ -63,15 +66,18 @@ fun LoginScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .size(69.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    .size(69.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("RC", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Image(
+                    painter = painterResource(id = R.drawable.rc_osd_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.fillMaxSize()
+                )
             }
 
             Text(
-                "Office of the Student Discipline",
+                "Office for Student Discipline",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
