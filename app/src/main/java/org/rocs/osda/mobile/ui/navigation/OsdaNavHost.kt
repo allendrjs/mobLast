@@ -148,7 +148,7 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                     viewModelStoreOwner = backStackEntry,
                     factory = viewModelFactory {
                         initializer {
-                            ChatViewModel(app.chatRepository, app.recordRepository, app.appealRepository, app.enrollmentRepository)
+                            ChatViewModel(app.chatRepository, app.recordRepository, app.appealRepository, app.enrollmentRepository, app.documentRepository)
                         }
                     }
                 )
