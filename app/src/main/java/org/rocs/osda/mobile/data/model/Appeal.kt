@@ -14,7 +14,8 @@ data class Appeal(
 data class AppealSubmission(
     val recordId: Long,
     val enrollmentId: Long,
-    val message: String
+    val message: String,
+    val documentId: Long? = null
 )
 
 fun Appeal.isPending(): Boolean = status.uppercase() in setOf("PENDING", "UNDER_REVIEW")

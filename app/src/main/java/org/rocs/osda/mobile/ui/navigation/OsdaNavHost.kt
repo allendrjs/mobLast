@@ -148,7 +148,7 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                     viewModelStoreOwner = backStackEntry,
                     factory = viewModelFactory {
                         initializer {
-                            ChatViewModel(app.chatRepository, app.recordRepository, app.appealRepository, app.enrollmentRepository)
+                            ChatViewModel(app.chatRepository, app.recordRepository, app.appealRepository, app.enrollmentRepository, app.documentRepository)
                         }
                     }
                 )
@@ -210,7 +210,7 @@ fun OsdaNavHost(app: OsdaApplication, navController: NavHostController = remembe
                         viewModelStoreOwner = backStackEntry,
                         key = "appeal-$recordId",
                         factory = viewModelFactory {
-                            initializer { AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, recordId) }
+                            initializer { AppealViewModel(app.appealRepository, app.recordRepository, app.enrollmentRepository, app.documentRepository, recordId) }
                         }
                     )
                     AppealScreen(

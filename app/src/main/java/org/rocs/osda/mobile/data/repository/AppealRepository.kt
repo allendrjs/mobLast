@@ -9,8 +9,8 @@ class AppealRepository(
     private val appealApi: AppealApi,
     private val sessionManager: SessionManager
 ) {
-    suspend fun submitAppeal(recordId: Long, enrollmentId: Long, message: String): Appeal =
-        appealApi.submitAppeal(AppealSubmission(recordId, enrollmentId, message))
+    suspend fun submitAppeal(recordId: Long, enrollmentId: Long, message: String, documentId: Long? = null): Appeal =
+        appealApi.submitAppeal(AppealSubmission(recordId, enrollmentId, message, documentId))
 
     suspend fun getMyAppeals(): List<Appeal> {
         val studentId = sessionManager.currentStudentId()
