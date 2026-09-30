@@ -1,5 +1,9 @@
 package org.rocs.osda.mobile.ui.appeal
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,13 +13,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,12 +37,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import java.io.File
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.ui.common.OsdaCard
 import org.rocs.osda.mobile.ui.common.PrimaryButton
@@ -41,6 +59,8 @@ import org.rocs.osda.mobile.ui.common.StatusColors
 import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
+import org.rocs.osda.mobile.util.AppealCaptureFile
+import org.rocs.osda.mobile.util.resolvePickedFile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +80,42 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
     val state by viewModel.uiState.collectAsState()
     val offenseRecord = state.records.firstOrNull { it.recordId == state.selectedRecordId }
     var showConfirmDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var pendingCaptureFile by remember { mutableStateOf<File?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val file = pendingCaptureFile
+        if (success && file != null) {
+            viewModel.uploadAttachmentFromFile(file, file.name, "image/jpeg")
+        }
+    }
+
+    fun startCameraCapture() {
+        val (file, uri) = AppealCaptureFile.create(context)
+        pendingCaptureFile = file
+        viewModel.onAttachmentSelected(file.name)
+        cameraLauncher.launch(uri)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startCameraCapture()
+    }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val picked = withContext(Dispatchers.IO) { resolvePickedFile(context, uri) }
+                    viewModel.onAttachmentSelected(picked.fileName)
+                    viewModel.uploadAttachmentFromBytes(picked.bytes, picked.fileName, picked.contentType)
+                } catch (e: Exception) {
+                    viewModel.onAttachmentReadError()
+                }
+            }
+        }
+    }
 
     LaunchedEffect(state.submitSuccess) {
         if (state.submitSuccess) {
@@ -107,6 +163,77 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
                         modifier = Modifier.fillMaxWidth().height(120.dp)
                     )
 
+                    Text("Attach Appeal Letter (optional)", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+
+                    if (state.attachmentFileName == null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                                            PackageManager.PERMISSION_GRANTED
+                                    if (granted) startCameraCapture() else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Take Photo")
+                            }
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    filePickerLauncher.launch(
+                                        arrayOf(
+                                            "application/pdf",
+                                            "application/msword",
+                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                            "image/*"
+                                        )
+                                    )
+                                }
+                            ) {
+                                Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Choose File")
+                            }
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                                Text(state.attachmentFileName ?: "", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                when {
+                                    state.isUploadingAttachment -> Text(
+                                        "Uploading...", style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    state.attachmentError != null -> Text(
+                                        state.attachmentError ?: "", style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    state.attachmentDocumentId != null -> Text(
+                                        "Uploaded", style = MaterialTheme.typography.labelSmall, color = OsdaTokens.green
+                                    )
+                                }
+                            }
+                            TextButton(onClick = { viewModel.clearAttachment() }) {
+                                Text("Remove")
+                            }
+                        }
+
+                        if (state.attachmentLooksUnreadable && state.attachmentDocumentId != null) {
+                            Text(
+                                "We couldn't clearly read this file. You can still submit, but consider retaking the photo or choosing a clearer copy.",
+                                color = OsdaTokens.amber,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+                    }
+
                     state.submitError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                     }
@@ -114,7 +241,7 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
                     Spacer(Modifier.height(16.dp))
                     PrimaryButton(
                         text = if (state.isSubmitting) "Submitting..." else "Submit Appeal",
-                        enabled = !state.isSubmitting,
+                        enabled = !state.isSubmitting && !state.isUploadingAttachment,
                         onClick = {
                             if (viewModel.validateBeforeConfirm()) {
                                 showConfirmDialog = true

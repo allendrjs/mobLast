@@ -9,10 +9,13 @@ import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.OffenseRecord
 import org.rocs.osda.mobile.data.model.isPending
+import org.rocs.osda.mobile.data.model.looksUnreadable
 import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
+import org.rocs.osda.mobile.data.repository.DocumentRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
+import java.io.File
 
 enum class AppealFilter { ALL, PENDING, APPROVED, DENIED }
 
@@ -26,7 +29,12 @@ data class AppealUiState(
     val isSubmitting: Boolean = false,
     val error: String? = null,
     val submitError: String? = null,
-    val submitSuccess: Boolean = false
+    val submitSuccess: Boolean = false,
+    val attachmentFileName: String? = null,
+    val isUploadingAttachment: Boolean = false,
+    val attachmentDocumentId: Long? = null,
+    val attachmentLooksUnreadable: Boolean = false,
+    val attachmentError: String? = null
 ) {
     val filteredAppeals: List<Appeal>
         get() = when (filter) {
@@ -46,6 +54,7 @@ class AppealViewModel(
     private val appealRepository: AppealRepository,
     private val recordRepository: RecordRepository,
     private val enrollmentRepository: EnrollmentRepository,
+    private val documentRepository: DocumentRepository,
     initialRecordId: Long? = null
 ) : ViewModel() {
 
@@ -84,6 +93,70 @@ class AppealViewModel(
         _uiState.value = _uiState.value.copy(message = value, submitError = null)
     }
 
+    /** Uploads a camera-captured photo (written to disk by the camera intent). */
+    fun uploadAttachmentFromFile(file: File, fileName: String, contentType: String) {
+        uploadAttachment { documentRepository.uploadAppealLetter(file, fileName, contentType) }
+    }
+
+    /** Uploads a file picked from the device (its bytes read via ContentResolver). */
+    fun uploadAttachmentFromBytes(bytes: ByteArray, fileName: String, contentType: String) {
+        uploadAttachment { documentRepository.uploadAppealLetter(bytes, fileName, contentType) }
+    }
+
+    private fun uploadAttachment(upload: suspend () -> org.rocs.osda.mobile.data.model.DocumentUploadResponse) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isUploadingAttachment = true,
+                attachmentError = null,
+                submitError = null
+            )
+            try {
+                val response = upload()
+                _uiState.value = _uiState.value.copy(
+                    isUploadingAttachment = false,
+                    attachmentDocumentId = response.documentId,
+                    attachmentLooksUnreadable = response.looksUnreadable()
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isUploadingAttachment = false,
+                    attachmentFileName = null,
+                    attachmentDocumentId = null,
+                    attachmentError = e.toUserMessage("Couldn't upload that file. Please try again.")
+                )
+            }
+        }
+    }
+
+    /** Called immediately when a file/photo is chosen, before the upload call resolves. */
+    fun onAttachmentSelected(fileName: String) {
+        _uiState.value = _uiState.value.copy(
+            attachmentFileName = fileName,
+            attachmentDocumentId = null,
+            attachmentLooksUnreadable = false,
+            attachmentError = null
+        )
+    }
+
+    fun onAttachmentReadError() {
+        _uiState.value = _uiState.value.copy(
+            isUploadingAttachment = false,
+            attachmentFileName = null,
+            attachmentDocumentId = null,
+            attachmentError = "Couldn't read the selected file. Please try again."
+        )
+    }
+
+    fun clearAttachment() {
+        _uiState.value = _uiState.value.copy(
+            attachmentFileName = null,
+            attachmentDocumentId = null,
+            attachmentLooksUnreadable = false,
+            attachmentError = null,
+            isUploadingAttachment = false
+        )
+    }
+
     fun validateBeforeConfirm(): Boolean {
         val state = _uiState.value
         val recordId = state.selectedRecordId
@@ -118,13 +191,18 @@ class AppealViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmitting = true, submitError = null)
             try {
-                appealRepository.submitAppeal(recordId, currentEnrollmentId, state.message.trim())
+                appealRepository.submitAppeal(
+                    recordId, currentEnrollmentId, state.message.trim(), state.attachmentDocumentId
+                )
                 val refreshed = appealRepository.getMyAppeals().sortedByDescending { it.dateFiled ?: "" }
                 _uiState.value = _uiState.value.copy(
                     isSubmitting = false,
                     submitSuccess = true,
                     appeals = refreshed,
-                    message = ""
+                    message = "",
+                    attachmentFileName = null,
+                    attachmentDocumentId = null,
+                    attachmentLooksUnreadable = false
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
