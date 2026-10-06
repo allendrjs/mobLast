@@ -180,6 +180,14 @@ private fun FileAppealContent(viewModel: AppealViewModel) {
                     Text("Attach Appeal Letter (optional)", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
 
                     if (state.attachmentFileName == null) {
+                        state.attachmentError?.let {
+                            Text(
+                                it,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(
                                 modifier = Modifier.weight(1f),
@@ -359,12 +367,14 @@ private fun AppealHistoryCard(appeal: Appeal) {
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
         ) {
             Text(
                 appeal.record?.offense?.offense ?: "Offense",
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f)
             )
             StatusPill(appeal.status.toDisplayStatus(), fg, bg)
         }
