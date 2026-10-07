@@ -1,5 +1,6 @@
 package org.rocs.osda.mobile.ui.login
 
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +45,7 @@ class LoginViewModel(private val authRepository: AuthRepository) : ViewModel() {
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Login failed. Please try again."
+                    error = e.toUserMessage(e.message ?: "Login failed. Please try again.")
                 )
             }
         }

@@ -44,9 +44,15 @@ class DashboardViewModel(
 
     init { load() }
 
-    fun load() {
+    fun load() = fetch(silent = false)
+
+    fun refresh() = fetch(silent = true)
+
+    private fun fetch(silent: Boolean) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            if (!silent) {
+                _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            }
             try {
                 val studentId = sessionManager.studentIdFlow.first()
                 val enrollment = runCatching { enrollmentRepository.getMyLatestEnrollment() }.getOrNull()
@@ -67,10 +73,12 @@ class DashboardViewModel(
                     recentActivity = activity
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.toUserMessage("Couldn't load your dashboard. Please try again.")
-                )
+                if (!silent) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = e.toUserMessage("Couldn't load your dashboard. Please try again.")
+                    )
+                }
             }
         }
     }

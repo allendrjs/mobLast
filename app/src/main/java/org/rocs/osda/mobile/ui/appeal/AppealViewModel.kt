@@ -85,6 +85,16 @@ class AppealViewModel(
         }
     }
 
+    fun refresh() {
+        viewModelScope.launch {
+            try {
+                val appeals = appealRepository.getMyAppeals().sortedByDescending { it.dateFiled ?: "" }
+                _uiState.value = _uiState.value.copy(appeals = appeals)
+            } catch (e: Exception) {
+            }
+        }
+    }
+
     fun setFilter(filter: AppealFilter) {
         _uiState.value = _uiState.value.copy(filter = filter)
     }

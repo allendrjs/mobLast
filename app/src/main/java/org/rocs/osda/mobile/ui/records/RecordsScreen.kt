@@ -28,6 +28,7 @@ import org.rocs.osda.mobile.ui.common.FilterPill
 import org.rocs.osda.mobile.ui.common.OsdaCard
 import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusColors
+import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
 import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
@@ -36,6 +37,7 @@ import org.rocs.osda.mobile.ui.theme.OsdaTokens
 @Composable
 fun OffensesScreen(viewModel: RecordsViewModel, onOffenseClick: (OffenseRecord) -> Unit) {
     val state by viewModel.uiState.collectAsState()
+    RefreshWhileVisible(onRefresh = viewModel::refresh)
 
     PullToRefreshBox(
         isRefreshing = state.isLoading,

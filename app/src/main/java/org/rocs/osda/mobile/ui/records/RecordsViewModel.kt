@@ -65,6 +65,17 @@ class RecordsViewModel(
         }
     }
 
+    fun refresh() {
+        viewModelScope.launch {
+            try {
+                val records = recordRepository.getMyRecords().sortedByDescending { it.dateOfViolation }
+                val appeals = runCatching { appealRepository.getMyAppeals() }.getOrDefault(emptyList())
+                _uiState.value = _uiState.value.copy(records = records, appeals = appeals)
+            } catch (e: Exception) {
+            }
+        }
+    }
+
     fun setFilter(filter: OffenseFilter) {
         _uiState.value = _uiState.value.copy(filter = filter)
     }

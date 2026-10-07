@@ -15,4 +15,4 @@ data class DocumentUploadResponse(
 private const val LOW_CONFIDENCE_TEXT_LENGTH = 25
 
 fun DocumentUploadResponse.looksUnreadable(): Boolean =
-    extractedText.isNullOrBlank() || extractedText.trim().length < LOW_CONFIDENCE_TEXT_LENGTH
+    extractedText != null && (extractedText.isBlank() || extractedText.trim().length < LOW_CONFIDENCE_TEXT_LENGTH)
