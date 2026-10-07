@@ -2,6 +2,7 @@ package org.rocs.osda.mobile.data.repository
 
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.AppealSubmission
+import org.rocs.osda.mobile.data.model.AppealUpdate
 import org.rocs.osda.mobile.data.remote.AppealApi
 import org.rocs.osda.mobile.session.SessionManager
 
@@ -11,6 +12,9 @@ class AppealRepository(
 ) {
     suspend fun submitAppeal(recordId: Long, enrollmentId: Long, message: String, documentId: Long? = null): Appeal =
         appealApi.submitAppeal(AppealSubmission(recordId, enrollmentId, message, documentId))
+
+    suspend fun updateAppeal(appealId: Long, message: String): Appeal =
+        appealApi.updateAppeal(appealId, AppealUpdate(message))
 
     suspend fun getMyAppeals(): List<Appeal> {
         val studentId = sessionManager.currentStudentId()
