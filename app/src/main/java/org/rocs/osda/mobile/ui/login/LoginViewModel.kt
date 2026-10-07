@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AuthRepository
 
 data class LoginUiState(

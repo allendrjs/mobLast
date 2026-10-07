@@ -174,6 +174,18 @@ fun StatRow(label: String, value: String) {
 fun String.toDisplayStatus(): String =
     lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
 
+/**
+ * Backend status strings come back SHOUTING_CASE ("PENDING", "APPEALED",
+ * "UNDER_REVIEW"). This titlecases them for display ("Pending", "Appealed",
+ * "Under review"). Several screens previously did this inconsistently --
+ * some called `replaceFirstChar { it.uppercase() }` directly on the
+ * already-all-caps string, which is a no-op and left "PENDING" on screen,
+ * while others correctly lowercased first. This is the one place that
+ * conversion should happen.
+ */
+fun String.toDisplayStatus(): String =
+    lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+
 object StatusColors {
     @Composable
     fun forRecord(status: String): Pair<Color, Color> = when (status.uppercase()) {
