@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -269,7 +270,7 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Submit this appeal?") },
-            text = { Text("Once submitted, this appeal will be sent to the Prefect for review and can't be edited.") },
+            text = { Text("Once submitted, this appeal will be sent to the Prefect for review. You can still edit it while it is pending.") },
             confirmButton = {
                 TextButton(onClick = {
                     showConfirmDialog = false
@@ -292,6 +293,44 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
 private fun MyAppealsContent(viewModel: AppealViewModel) {
     val state by viewModel.uiState.collectAsState()
     RefreshWhileVisible(onRefresh = viewModel::refresh)
+
+    if (state.editingAppeal != null) {
+        AlertDialog(
+            onDismissRequest = { if (!state.isSavingEdit) viewModel.cancelEdit() },
+            title = { Text("Edit appeal") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = state.editMessage,
+                        onValueChange = viewModel::onEditMessageChange,
+                        modifier = Modifier.fillMaxWidth().height(140.dp),
+                        enabled = !state.isSavingEdit
+                    )
+                    state.editError?.let {
+                        Text(
+                            it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = viewModel::saveEdit,
+                    enabled = !state.isSavingEdit && state.editMessage.isNotBlank()
+                ) {
+                    Text(if (state.isSavingEdit) "Saving..." else "Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelEdit, enabled = !state.isSavingEdit) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     PullToRefreshBox(
         isRefreshing = state.isLoading,
@@ -335,7 +374,12 @@ private fun MyAppealsContent(viewModel: AppealViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.filteredAppeals) { appeal -> AppealHistoryCard(appeal) }
+                    items(state.filteredAppeals) { appeal ->
+                        AppealHistoryCard(
+                            appeal = appeal,
+                            onEdit = if (appeal.isPending()) ({ viewModel.startEdit(appeal) }) else null
+                        )
+                    }
                 }
             }
 
@@ -345,7 +389,7 @@ private fun MyAppealsContent(viewModel: AppealViewModel) {
 }
 
 @Composable
-private fun AppealHistoryCard(appeal: Appeal) {
+private fun AppealHistoryCard(appeal: Appeal, onEdit: (() -> Unit)? = null) {
     val (fg, bg) = StatusColors.forAppeal(appeal.status)
     OsdaCard {
         Text(
@@ -391,6 +435,22 @@ private fun AppealHistoryCard(appeal: Appeal) {
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 2.dp)
         )
+        if (appeal.edited) {
+            Text(
+                "Edited",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        if (onEdit != null) {
+            TextButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Edit appeal")
+            }
+        }
         appeal.remarks?.let {
             Text(
                 "Remarks: $it",

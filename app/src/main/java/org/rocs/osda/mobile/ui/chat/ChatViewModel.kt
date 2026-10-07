@@ -295,7 +295,7 @@ class ChatViewModel(
 
     private fun proceedToConfirming(record: OffenseRecord, message: String, documentId: Long?) {
         flowStep = AppealFlowStep.Confirming(record, message, documentId)
-        appendBotMessage("Submit this appeal for \"${record.offense.offense}\"? This can't be edited afterward.")
+        appendBotMessage("Submit this appeal for \"${record.offense.offense}\"? You can still edit it while it is pending.")
         setQuickReplies(listOf(QuickReply("confirm_submit", "Submit"), QuickReply("confirm_cancel", "Cancel")))
     }
 

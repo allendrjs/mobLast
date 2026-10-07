@@ -8,7 +8,12 @@ data class Appeal(
     val dateFiled: String?,
     val status: String,
     val dateProcessed: String?,
-    val remarks: String?
+    val remarks: String?,
+    val edited: Boolean = false
+)
+
+data class AppealUpdate(
+    val message: String
 )
 
 data class AppealSubmission(

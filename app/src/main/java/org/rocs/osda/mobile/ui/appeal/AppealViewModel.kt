@@ -34,7 +34,11 @@ data class AppealUiState(
     val isUploadingAttachment: Boolean = false,
     val attachmentDocumentId: Long? = null,
     val attachmentLooksUnreadable: Boolean = false,
-    val attachmentError: String? = null
+    val attachmentError: String? = null,
+    val editingAppeal: Appeal? = null,
+    val editMessage: String = "",
+    val isSavingEdit: Boolean = false,
+    val editError: String? = null
 ) {
     val filteredAppeals: List<Appeal>
         get() = when (filter) {
@@ -91,6 +95,55 @@ class AppealViewModel(
                 val appeals = appealRepository.getMyAppeals().sortedByDescending { it.dateFiled ?: "" }
                 _uiState.value = _uiState.value.copy(appeals = appeals)
             } catch (e: Exception) {
+            }
+        }
+    }
+
+    fun startEdit(appeal: Appeal) {
+        _uiState.value = _uiState.value.copy(
+            editingAppeal = appeal,
+            editMessage = appeal.message,
+            isSavingEdit = false,
+            editError = null
+        )
+    }
+
+    fun onEditMessageChange(value: String) {
+        _uiState.value = _uiState.value.copy(editMessage = value, editError = null)
+    }
+
+    fun cancelEdit() {
+        _uiState.value = _uiState.value.copy(editingAppeal = null, editError = null)
+    }
+
+    fun saveEdit() {
+        val state = _uiState.value
+        val appeal = state.editingAppeal ?: return
+        val newMessage = state.editMessage.trim()
+        if (newMessage.isEmpty()) {
+            _uiState.value = state.copy(editError = "Appeal message is required.")
+            return
+        }
+        if (newMessage == appeal.message.trim()) {
+            cancelEdit()
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSavingEdit = true, editError = null)
+            try {
+                appealRepository.updateAppeal(appeal.appealId, newMessage)
+                val refreshed = appealRepository.getMyAppeals().sortedByDescending { it.dateFiled ?: "" }
+                _uiState.value = _uiState.value.copy(
+                    isSavingEdit = false,
+                    editingAppeal = null,
+                    appeals = refreshed
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isSavingEdit = false,
+                    editError = e.toUserMessage("Couldn't save your changes. Please try again.")
+                )
             }
         }
     }
