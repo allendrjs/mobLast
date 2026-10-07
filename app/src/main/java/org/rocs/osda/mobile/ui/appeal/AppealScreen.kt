@@ -56,10 +56,12 @@ import org.rocs.osda.mobile.ui.common.PrimaryButton
 import org.rocs.osda.mobile.ui.common.FilterPill
 import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusColors
+import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
 import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 import org.rocs.osda.mobile.util.AppealCaptureFile
+import org.rocs.osda.mobile.util.formatDateTime
 import org.rocs.osda.mobile.util.resolvePickedFile
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -303,6 +305,7 @@ private fun FileAppealContent(viewModel: AppealViewModel) {
 @Composable
 private fun MyAppealsContent(viewModel: AppealViewModel) {
     val state by viewModel.uiState.collectAsState()
+    RefreshWhileVisible(onRefresh = viewModel::refresh)
 
     PullToRefreshBox(
         isRefreshing = state.isLoading,
@@ -391,13 +394,13 @@ private fun AppealHistoryCard(appeal: Appeal) {
             modifier = Modifier.padding(top = 2.dp)
         )
         Text(
-            "Submitted ${appeal.dateFiled ?: "—"}",
+            "Submitted ${formatDateTime(appeal.dateFiled)}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 6.dp)
         )
         Text(
-            "Date of Resolution: ${appeal.dateProcessed ?: "Not yet resolved"}",
+            "Date of Resolution: ${if (appeal.dateProcessed == null) "Not yet resolved" else formatDateTime(appeal.dateProcessed)}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 2.dp)
