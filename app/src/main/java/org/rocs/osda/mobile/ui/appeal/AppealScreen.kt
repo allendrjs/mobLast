@@ -66,6 +66,11 @@ import org.rocs.osda.mobile.util.formatDateTime
 import androidx.compose.material.icons.filled.Edit
 import org.rocs.osda.mobile.data.model.isPending
 import androidx.compose.runtime.saveable.rememberSaveable
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.FileOutputStream
+import android.content.Context
+import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,8 +98,43 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val path = pendingCaptureFilePath
         if (success && path != null) {
-            val file = File(path)
-            viewModel.uploadAttachmentFromFile(file, file.name, "image/jpeg")
+            val originalFile = java.io.File(path)
+
+            coroutineScope.launch {
+                try {
+                    val compressedFile = withContext(Dispatchers.IO) {
+                        val options = BitmapFactory.Options().apply {
+                            inJustDecodeBounds = true
+                        }
+                        BitmapFactory.decodeFile(originalFile.absolutePath, options)
+
+                        var scale = 1
+                        val reqSize = 1500
+                        if (options.outHeight > reqSize || options.outWidth > reqSize) {
+                            val halfHeight = options.outHeight / 2
+                            val halfWidth = options.outWidth / 2
+                            while (halfHeight / scale >= reqSize && halfWidth / scale >= reqSize) {
+                                scale *= 2
+                            }
+                        }
+
+                        val decodeOptions = BitmapFactory.Options().apply {
+                            inSampleSize = scale
+                        }
+                        val shrunkBitmap = BitmapFactory.decodeFile(originalFile.absolutePath, decodeOptions)
+
+                        val file = java.io.File(context.cacheDir, "compressed_${originalFile.name}")
+                        FileOutputStream(file).use { outStream ->
+                            shrunkBitmap?.compress(Bitmap.CompressFormat.JPEG, 80, outStream)
+                        }
+                        file
+                    }
+
+                    viewModel.uploadAttachmentFromFile(compressedFile, compressedFile.name, "image/jpeg")
+                } catch (e: Exception) {
+                    viewModel.onAttachmentReadError()
+                }
+            }
         }
     }
 
@@ -453,4 +493,5 @@ private fun AppealHistoryCard(appeal: Appeal, onEdit: (() -> Unit)? = null) {
             )
         }
     }
+
 }

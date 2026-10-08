@@ -200,7 +200,6 @@ class AppealViewModel(
     fun onAttachmentReadError() {
         _uiState.value = _uiState.value.copy(
             isUploadingAttachment = false,
-            attachmentFileName = null,
             attachmentDocumentId = null,
             attachmentError = "Couldn't read the selected file. Please try again."
         )
