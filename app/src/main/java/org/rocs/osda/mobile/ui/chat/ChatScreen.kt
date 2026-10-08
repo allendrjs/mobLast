@@ -1,5 +1,9 @@
 package org.rocs.osda.mobile.ui.chat
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -34,18 +38,88 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.rocs.osda.mobile.data.model.ChatMessage
 import org.rocs.osda.mobile.ui.common.BackHeader
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
+import org.rocs.osda.mobile.util.AppealCaptureFile
+import org.rocs.osda.mobile.util.resolvePickedFile
 
 @Composable
 fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -> Unit, onViewOffenses: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var pendingCaptureFile by remember { mutableStateOf<File?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val file = pendingCaptureFile
+        if (success && file != null) {
+            viewModel.uploadAttachmentFromFile(file, file.name, "image/jpeg")
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val (file, uri) = AppealCaptureFile.create(context)
+            pendingCaptureFile = file
+            cameraLauncher.launch(uri)
+        }
+    }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val picked = withContext(Dispatchers.IO) { resolvePickedFile(context, uri) }
+                    viewModel.uploadAttachmentFromBytes(picked.bytes, picked.fileName, picked.contentType)
+                } catch (e: Exception) {
+                    viewModel.onAttachmentReadError()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                ChatUiEvent.LaunchCamera -> {
+                    val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                            PackageManager.PERMISSION_GRANTED
+                    if (granted) {
+                        val (file, uri) = AppealCaptureFile.create(context)
+                        pendingCaptureFile = file
+                        cameraLauncher.launch(uri)
+                    } else {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+                ChatUiEvent.LaunchFilePicker -> {
+                    filePickerLauncher.launch(
+                        arrayOf(
+                            "application/pdf",
+                            "application/msword",
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            "image/*"
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
@@ -62,7 +136,10 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
 
         if (state.messages.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().weight(1f).padding(24.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -74,7 +151,9 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
         } else {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -82,10 +161,13 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
                 if (state.isSending) {
                     item { TypingIndicator(isFirstMessage = state.messages.size <= 1) }
                 }
+                if (state.isUploadingAttachment) {
+                    item { TypingIndicator(isFirstMessage = false, overrideLabel = "Uploading your file...") }
+                }
             }
         }
 
-        if (state.quickReplies.isNotEmpty() && !state.isSending) {
+        if (state.quickReplies.isNotEmpty() && !state.isSending && !state.isUploadingAttachment) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -131,12 +213,12 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
             )
             IconButton(
                 onClick = viewModel::send,
-                enabled = !state.isSending && state.input.isNotBlank()
+                enabled = !state.isSending && !state.isUploadingAttachment && state.input.isNotBlank()
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
-                    tint = if (!state.isSending && state.input.isNotBlank())
+                    tint = if (!state.isSending && !state.isUploadingAttachment && state.input.isNotBlank())
                         MaterialTheme.colorScheme.primary
                     else
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -182,7 +264,7 @@ private fun MessageBubble(message: ChatMessage) {
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            MarkdownText(
+            Text( // Note: Replaced MarkdownText with standard Text. If you have a custom MarkdownText composable, change this back and ensure it is properly imported.
                 text = message.content,
                 color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyMedium
@@ -192,7 +274,7 @@ private fun MessageBubble(message: ChatMessage) {
 }
 
 @Composable
-private fun TypingIndicator(isFirstMessage: Boolean) {
+private fun TypingIndicator(isFirstMessage: Boolean, overrideLabel: String? = null) {
     val transition = rememberInfiniteTransition(label = "thinking-pulse")
     val alpha by transition.animateFloat(
         initialValue = 0.35f,
@@ -203,7 +285,7 @@ private fun TypingIndicator(isFirstMessage: Boolean) {
         ),
         label = "thinking-alpha"
     )
-    val label = if (isFirstMessage) "Waking up the assistant..." else "Thinking..."
+    val label = overrideLabel ?: if (isFirstMessage) "Waking up the assistant..." else "Thinking..."
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
         Box(

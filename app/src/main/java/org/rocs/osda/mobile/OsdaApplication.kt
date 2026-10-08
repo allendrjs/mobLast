@@ -5,6 +5,7 @@ import org.rocs.osda.mobile.data.remote.ApiClient
 import org.rocs.osda.mobile.data.remote.AppealApi
 import org.rocs.osda.mobile.data.remote.AuthApi
 import org.rocs.osda.mobile.data.remote.ChatApi
+import org.rocs.osda.mobile.data.remote.DocumentApi
 import org.rocs.osda.mobile.data.remote.EnrollmentApi
 import org.rocs.osda.mobile.data.remote.GuardianApi
 import org.rocs.osda.mobile.data.remote.HandbookApi
@@ -12,6 +13,7 @@ import org.rocs.osda.mobile.data.remote.RecordApi
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.AuthRepository
 import org.rocs.osda.mobile.data.repository.ChatRepository
+import org.rocs.osda.mobile.data.repository.DocumentRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.GuardianRepository
 import org.rocs.osda.mobile.data.repository.HandbookRepository
@@ -38,6 +40,8 @@ class OsdaApplication : Application() {
         private set
     lateinit var handbookRepository: HandbookRepository
         private set
+    lateinit var documentRepository: DocumentRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -52,5 +56,6 @@ class OsdaApplication : Application() {
         guardianRepository = GuardianRepository(retrofit.create(GuardianApi::class.java), sessionManager)
         chatRepository = ChatRepository(retrofit.create(ChatApi::class.java))
         handbookRepository = HandbookRepository(retrofit.create(HandbookApi::class.java))
+        documentRepository = DocumentRepository(retrofit.create(DocumentApi::class.java))
     }
 }

@@ -2,16 +2,23 @@ package org.rocs.osda.mobile.ui.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.io.File
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.ChatMessage
+import org.rocs.osda.mobile.data.model.DocumentUploadResponse
 import org.rocs.osda.mobile.data.model.OffenseRecord
 import org.rocs.osda.mobile.data.model.isPending
+import org.rocs.osda.mobile.data.model.looksUnreadable
 import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.ChatRepository
+import org.rocs.osda.mobile.data.repository.DocumentRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 
@@ -22,24 +29,42 @@ data class ChatUiState(
     val input: String = "",
     val isSending: Boolean = false,
     val error: String? = null,
-    val quickReplies: List<QuickReply> = emptyList()
+    val quickReplies: List<QuickReply> = emptyList(),
+    val isUploadingAttachment: Boolean = false
 )
+
+/** One-shot UI actions the chatbot asks the screen to perform (camera/file picker). */
+sealed class ChatUiEvent {
+    object LaunchCamera : ChatUiEvent()
+    object LaunchFilePicker : ChatUiEvent()
+}
 
 private sealed class AppealFlowStep {
     data class PickingOffense(val eligible: List<OffenseRecord>) : AppealFlowStep()
     data class WritingMessage(val record: OffenseRecord) : AppealFlowStep()
-    data class Confirming(val record: OffenseRecord, val message: String) : AppealFlowStep()
+    data class AttachingLetter(val record: OffenseRecord, val message: String) : AppealFlowStep()
+    data class Confirming(val record: OffenseRecord, val message: String, val documentId: Long? = null) : AppealFlowStep()
 }
+
+private val attachQuickReplies = listOf(
+    QuickReply("attach_take_photo", "Take Photo"),
+    QuickReply("attach_choose_file", "Choose File"),
+    QuickReply("attach_skip", "Skip")
+)
 
 class ChatViewModel(
     private val chatRepository: ChatRepository,
     private val recordRepository: RecordRepository,
     private val appealRepository: AppealRepository,
-    private val enrollmentRepository: EnrollmentRepository
+    private val enrollmentRepository: EnrollmentRepository,
+    private val documentRepository: DocumentRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState(quickReplies = starterQuickReplies()))
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<ChatUiEvent>(Channel.BUFFERED)
+    val events: Flow<ChatUiEvent> = _events.receiveAsFlow()
 
     private var flowStep: AppealFlowStep? = null
     private var enrollmentId: Long? = null
@@ -74,6 +99,11 @@ class ChatViewModel(
 
             is AppealFlowStep.WritingMessage -> handleAppealMessageWritten(message, step.record)
 
+            is AppealFlowStep.AttachingLetter -> {
+                appendBotMessage("Please tap one of the options below.")
+                setQuickReplies(attachQuickReplies)
+            }
+
             is AppealFlowStep.Confirming -> {
                 when (message.trim().lowercase()) {
                     "yes", "y", "submit", "confirm", "yeah", "yep" -> confirmAppealSubmission()
@@ -96,7 +126,7 @@ class ChatViewModel(
     }
 
     fun onQuickReplySelected(reply: QuickReply) {
-        if (_uiState.value.isSending) return
+        if (_uiState.value.isSending || _uiState.value.isUploadingAttachment) return
         appendUserMessage(reply.label)
         setQuickReplies(emptyList())
 
@@ -106,6 +136,9 @@ class ChatViewModel(
             reply.id == "check_status" -> checkStatus()
             reply.id == "flow_cancel" || reply.id == "confirm_cancel" -> cancelAppealFlow()
             reply.id == "confirm_submit" -> confirmAppealSubmission()
+            reply.id == "attach_take_photo" -> viewModelScope.launch { _events.send(ChatUiEvent.LaunchCamera) }
+            reply.id == "attach_choose_file" -> viewModelScope.launch { _events.send(ChatUiEvent.LaunchFilePicker) }
+            reply.id == "attach_skip" -> skipAttachment()
             reply.id.startsWith("offense_") -> {
                 val recordId = reply.id.removePrefix("offense_").toLongOrNull()
                 val record = (flowStep as? AppealFlowStep.PickingOffense)?.eligible?.firstOrNull { it.recordId == recordId }
@@ -215,8 +248,54 @@ class ChatViewModel(
     }
 
     private fun handleAppealMessageWritten(message: String, record: OffenseRecord) {
-        flowStep = AppealFlowStep.Confirming(record, message)
-        appendBotMessage("Submit this appeal for \"${record.offense.offense}\"? This can't be edited afterward.")
+        flowStep = AppealFlowStep.AttachingLetter(record, message)
+        appendBotMessage("Would you like to attach a copy of your appeal letter? This is optional.")
+        setQuickReplies(attachQuickReplies)
+    }
+
+    /** Uploads a camera-captured photo (written to disk by the camera intent). */
+    fun uploadAttachmentFromFile(file: File, fileName: String, contentType: String) {
+        uploadChatAttachment(fileName) { documentRepository.uploadAppealLetter(file, fileName, contentType) }
+    }
+
+    /** Uploads a file picked from the device (its bytes read via ContentResolver). */
+    fun uploadAttachmentFromBytes(bytes: ByteArray, fileName: String, contentType: String) {
+        uploadChatAttachment(fileName) { documentRepository.uploadAppealLetter(bytes, fileName, contentType) }
+    }
+
+    fun onAttachmentReadError() {
+        appendBotMessage("Couldn't read that file. You can try again, or skip attaching a letter.")
+        setQuickReplies(attachQuickReplies)
+    }
+
+    private fun uploadChatAttachment(fileName: String, upload: suspend () -> DocumentUploadResponse) {
+        val step = flowStep as? AppealFlowStep.AttachingLetter ?: return
+        _uiState.value = _uiState.value.copy(isUploadingAttachment = true)
+        viewModelScope.launch {
+            try {
+                val response = upload()
+                _uiState.value = _uiState.value.copy(isUploadingAttachment = false)
+                val note = if (response.looksUnreadable())
+                    " I couldn't read much text from it — you can still submit, or attach a clearer copy instead."
+                else ""
+                appendBotMessage("Attached \"$fileName\".$note")
+                proceedToConfirming(step.record, step.message, response.documentId)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isUploadingAttachment = false)
+                appendBotMessage(e.toUserMessage("Couldn't upload that file. You can try again, or skip attaching a letter."))
+                setQuickReplies(attachQuickReplies)
+            }
+        }
+    }
+
+    private fun skipAttachment() {
+        val step = flowStep as? AppealFlowStep.AttachingLetter ?: return
+        proceedToConfirming(step.record, step.message, null)
+    }
+
+    private fun proceedToConfirming(record: OffenseRecord, message: String, documentId: Long?) {
+        flowStep = AppealFlowStep.Confirming(record, message, documentId)
+        appendBotMessage("Submit this appeal for \"${record.offense.offense}\"? You can still edit it while it is pending.")
         setQuickReplies(listOf(QuickReply("confirm_submit", "Submit"), QuickReply("confirm_cancel", "Cancel")))
     }
 
@@ -230,7 +309,7 @@ class ChatViewModel(
                     ?: enrollmentRepository.getMyLatestEnrollment()?.enrollmentId
                     ?: throw IllegalStateException("No current enrollment on file.")
                 enrollmentId = currentEnrollmentId
-                appealRepository.submitAppeal(step.record.recordId, currentEnrollmentId, step.message)
+                appealRepository.submitAppeal(step.record.recordId, currentEnrollmentId, step.message, step.documentId)
                 appendBotMessage("Your appeal for \"${step.record.offense.offense}\" has been submitted. Tap below to view it, or keep asking me anything else.")
                 _uiState.value = _uiState.value.copy(isSending = false)
                 setQuickReplies(listOf(QuickReply("view_appeals", "View My Appeals")) + starterQuickReplies())
@@ -244,6 +323,7 @@ class ChatViewModel(
 
     private fun cancelAppealFlow() {
         flowStep = null
+        _uiState.value = _uiState.value.copy(isUploadingAttachment = false)
         appendBotMessage("No problem, the appeal wasn't submitted. Ask me anything else, or start over anytime.")
         setQuickReplies(starterQuickReplies())
     }

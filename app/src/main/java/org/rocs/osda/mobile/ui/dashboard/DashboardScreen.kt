@@ -27,6 +27,8 @@ import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
+import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
+import org.rocs.osda.mobile.util.formatDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,7 @@ fun DashboardScreen(
     onOpenHandbook: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    RefreshWhileVisible(onRefresh = viewModel::refresh)
     val enrollment = state.enrollment
     val displayName = enrollment?.student?.person?.fullName ?: state.studentId ?: "Student"
     val program = listOfNotNull(enrollment?.student?.studentType, enrollment?.section)
@@ -134,7 +137,7 @@ private fun ActivityRow(item: ActivityItem) {
     val (title, subtitle) = when (item) {
         is ActivityItem.RecordLogged -> "New Offense Logged" to "${item.record.offense.offense}  •  ${item.record.dateOfViolation}"
         is ActivityItem.AppealUpdated -> "Appeal ${item.appeal.status.toDisplayStatus()}" to
-                "${item.appeal.record?.offense?.offense ?: "Offense"}  •  ${item.appeal.dateProcessed ?: item.appeal.dateFiled ?: ""}"
+                "${item.appeal.record?.offense?.offense ?: "Offense"}  •  ${formatDateTime(item.appeal.dateProcessed ?: item.appeal.dateFiled)}"
     }
     OsdaCard {
         Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)

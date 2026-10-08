@@ -31,11 +31,13 @@ import org.rocs.osda.mobile.ui.common.StatusColors
 import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
+import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OffensesScreen(viewModel: RecordsViewModel, onOffenseClick: (OffenseRecord) -> Unit) {
     val state by viewModel.uiState.collectAsState()
+    RefreshWhileVisible(onRefresh = viewModel::refresh)
 
     PullToRefreshBox(
         isRefreshing = state.isLoading,
