@@ -96,7 +96,7 @@ fun StatusPill(text: String, fg: Color, bg: Color) {
             .background(bg, RoundedCornerShape(OsdaTokens.pillRadius))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
-        Text(text, color = fg, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = fg, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
     }
 }
 
