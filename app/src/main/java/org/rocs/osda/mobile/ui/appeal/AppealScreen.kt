@@ -56,6 +56,7 @@ import org.rocs.osda.mobile.ui.common.OsdaCard
 import org.rocs.osda.mobile.ui.common.PrimaryButton
 import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusColors
+import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
 import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
@@ -493,6 +494,22 @@ private fun AppealHistoryCard(appeal: Appeal, onEdit: (() -> Unit)? = null) {
             style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.padding(top = 2.dp)
         )
+        if (appeal.edited) {
+            Text(
+                "Edited",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        if (onEdit != null) {
+            TextButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Edit appeal")
+            }
+        }
         appeal.remarks?.let {
             Text(
                 "Remarks: $it",

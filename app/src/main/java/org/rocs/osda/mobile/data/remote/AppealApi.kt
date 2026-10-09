@@ -2,9 +2,11 @@ package org.rocs.osda.mobile.data.remote
 
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.AppealSubmission
+import org.rocs.osda.mobile.data.model.AppealUpdate
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import org.rocs.osda.mobile.data.model.AppealUpdate
 import retrofit2.http.PUT

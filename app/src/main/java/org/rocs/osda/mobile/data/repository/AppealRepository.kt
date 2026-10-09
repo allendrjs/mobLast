@@ -2,6 +2,7 @@ package org.rocs.osda.mobile.data.repository
 
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.AppealSubmission
+import org.rocs.osda.mobile.data.model.AppealUpdate
 import org.rocs.osda.mobile.data.remote.AppealApi
 import org.rocs.osda.mobile.session.SessionManager
 import org.rocs.osda.mobile.data.model.AppealUpdate

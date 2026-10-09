@@ -9,8 +9,10 @@ import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.model.Appeal
 import org.rocs.osda.mobile.data.model.OffenseRecord
 import org.rocs.osda.mobile.data.model.isPending
+import org.rocs.osda.mobile.data.model.looksUnreadable
 import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AppealRepository
+import org.rocs.osda.mobile.data.repository.DocumentRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
 import org.rocs.osda.mobile.data.model.looksUnreadable

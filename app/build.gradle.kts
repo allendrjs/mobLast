@@ -51,10 +51,14 @@ android {
             }
             buildConfigField("String", "API_BASE_URL", "\"https://rc-osd.tech/\"")
             signingConfig = signingConfigs.getByName("debug")
+
+            // Firebase App Distribution -- see docs/APP_DISTRIBUTION.md for
+            // one-time setup (Firebase project, App ID, tester group,
+            // `firebase login`). Fill in the real App ID before running
+            // `./gradlew assembleRelease appDistributionUploadRelease`.
             firebaseAppDistribution {
                 appId = project.findProperty("firebaseAppId") as String?
                     ?: "REPLACE_WITH_FIREBASE_APP_ID"
-
                 releaseNotes = "Build from ${LocalDate.now()}"
                 groups = "testers"
             }

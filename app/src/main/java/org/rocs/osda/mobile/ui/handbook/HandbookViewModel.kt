@@ -23,7 +23,7 @@ data class HandbookUiState(
         } else {
             sections.filter {
                 (it.sectionTitle?.contains(query, ignoreCase = true) == true) ||
-                        it.content.contains(query, ignoreCase = true)
+                    it.content.contains(query, ignoreCase = true)
             }
         }
 }
