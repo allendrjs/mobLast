@@ -13,14 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,10 +39,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,10 +46,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.rocs.osda.mobile.data.model.Appeal
+import org.rocs.osda.mobile.ui.common.FilterPill
 import org.rocs.osda.mobile.ui.common.OsdaCard
 import org.rocs.osda.mobile.ui.common.PrimaryButton
-import org.rocs.osda.mobile.ui.common.FilterPill
 import org.rocs.osda.mobile.ui.common.StatCard
 import org.rocs.osda.mobile.ui.common.StatusColors
 import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
@@ -62,8 +61,17 @@ import org.rocs.osda.mobile.ui.common.StatusPill
 import org.rocs.osda.mobile.ui.common.toDisplayStatus
 import org.rocs.osda.mobile.ui.theme.OsdaTokens
 import org.rocs.osda.mobile.util.AppealCaptureFile
-import org.rocs.osda.mobile.util.formatDateTime
 import org.rocs.osda.mobile.util.resolvePickedFile
+import org.rocs.osda.mobile.ui.common.RefreshWhileVisible
+import org.rocs.osda.mobile.util.formatDateTime
+import androidx.compose.material.icons.filled.Edit
+import org.rocs.osda.mobile.data.model.isPending
+import androidx.compose.runtime.saveable.rememberSaveable
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.FileOutputStream
+import android.content.Context
+import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,18 +94,54 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var pendingCaptureFile by remember { mutableStateOf<File?>(null) }
+    var pendingCaptureFilePath by rememberSaveable { mutableStateOf<String?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        val file = pendingCaptureFile
-        if (success && file != null) {
-            viewModel.uploadAttachmentFromFile(file, file.name, "image/jpeg")
+        val path = pendingCaptureFilePath
+        if (success && path != null) {
+            val originalFile = java.io.File(path)
+
+            coroutineScope.launch {
+                try {
+                    val compressedFile = withContext(Dispatchers.IO) {
+                        val options = BitmapFactory.Options().apply {
+                            inJustDecodeBounds = true
+                        }
+                        BitmapFactory.decodeFile(originalFile.absolutePath, options)
+
+                        var scale = 1
+                        val reqSize = 1500
+                        if (options.outHeight > reqSize || options.outWidth > reqSize) {
+                            val halfHeight = options.outHeight / 2
+                            val halfWidth = options.outWidth / 2
+                            while (halfHeight / scale >= reqSize && halfWidth / scale >= reqSize) {
+                                scale *= 2
+                            }
+                        }
+
+                        val decodeOptions = BitmapFactory.Options().apply {
+                            inSampleSize = scale
+                        }
+                        val shrunkBitmap = BitmapFactory.decodeFile(originalFile.absolutePath, decodeOptions)
+
+                        val file = java.io.File(context.cacheDir, "compressed_${originalFile.name}")
+                        FileOutputStream(file).use { outStream ->
+                            shrunkBitmap?.compress(Bitmap.CompressFormat.JPEG, 80, outStream)
+                        }
+                        file
+                    }
+
+                    viewModel.uploadAttachmentFromFile(compressedFile, compressedFile.name, "image/jpeg")
+                } catch (e: Exception) {
+                    viewModel.onAttachmentReadError()
+                }
+            }
         }
     }
 
     fun startCameraCapture() {
         val (file, uri) = AppealCaptureFile.create(context)
-        pendingCaptureFile = file
+        pendingCaptureFilePath = file.absolutePath
         viewModel.onAttachmentSelected(file.name)
         cameraLauncher.launch(uri)
     }
@@ -126,20 +170,6 @@ private fun FileAppealContent(viewModel: AppealViewModel, onSubmitted: () -> Uni
             onSubmitted()
         }
     }
-
-    if (viewModel.isFilingMode) {
-        FileAppealContent(viewModel)
-    } else {
-        MyAppealsContent(viewModel)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FileAppealContent(viewModel: AppealViewModel) {
-    val state by viewModel.uiState.collectAsState()
-    val offenseRecord = state.records.firstOrNull { it.recordId == state.selectedRecordId }
-    var showConfirmDialog by remember { mutableStateOf(false) }
 
     PullToRefreshBox(
         isRefreshing = state.isLoading,
@@ -187,7 +217,7 @@ private fun FileAppealContent(viewModel: AppealViewModel) {
                             Text(
                                 it,
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }
@@ -414,8 +444,7 @@ private fun AppealHistoryCard(appeal: Appeal, onEdit: (() -> Unit)? = null) {
         )
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 appeal.record?.offense?.offense ?: "Offense",
@@ -437,6 +466,22 @@ private fun AppealHistoryCard(appeal: Appeal, onEdit: (() -> Unit)? = null) {
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 2.dp)
         )
+        if (appeal.edited) {
+            Text(
+                "Edited",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        if (onEdit != null) {
+            TextButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Edit appeal")
+            }
+        }
         Text(
             "Submitted ${formatDateTime(appeal.dateFiled)}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -474,4 +519,5 @@ private fun AppealHistoryCard(appeal: Appeal, onEdit: (() -> Unit)? = null) {
             )
         }
     }
+
 }

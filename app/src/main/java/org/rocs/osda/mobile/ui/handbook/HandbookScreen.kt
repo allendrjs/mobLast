@@ -40,7 +40,6 @@ fun HandbookScreen(
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadIfNeeded() }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -118,6 +117,7 @@ private fun HandbookSectionCard(title: String?, content: String) {
         ) {
             Text(
                 title ?: "Handbook Section",
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f)

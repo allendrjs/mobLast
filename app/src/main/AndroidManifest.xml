@@ -23,9 +23,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Needed to hand the camera app a writable content:// Uri for
-             full-resolution appeal-letter photo capture (ACTION_IMAGE_CAPTURE
-             with EXTRA_OUTPUT requires this on API 24+). -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -35,6 +32,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
     </application>
 
 </manifest>

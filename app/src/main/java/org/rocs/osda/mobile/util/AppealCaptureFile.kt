@@ -8,11 +8,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Creates a fresh cache file (under the `appeal_captures/` FileProvider
- * path) for the camera app to write a full-resolution appeal-letter
- * photo into, and returns both the File and its shareable content:// Uri.
- */
 object AppealCaptureFile {
 
     fun create(context: Context): Pair<File, Uri> {

@@ -6,7 +6,6 @@ import android.provider.OpenableColumns
 
 data class PickedFile(val bytes: ByteArray, val fileName: String, val contentType: String)
 
-/** Reads a picked content:// Uri's bytes, display name and MIME type. */
 fun resolvePickedFile(context: Context, uri: Uri): PickedFile {
     val resolver = context.contentResolver
 

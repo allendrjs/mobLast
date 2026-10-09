@@ -136,7 +136,10 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
 
         if (state.messages.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().weight(1f).padding(24.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -148,7 +151,9 @@ fun ChatScreen(viewModel: ChatViewModel, onBack: () -> Unit, onViewAppeals: () -
         } else {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -259,7 +264,7 @@ private fun MessageBubble(message: ChatMessage) {
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            MarkdownText(
+            Text( // Note: Replaced MarkdownText with standard Text. If you have a custom MarkdownText composable, change this back and ensure it is properly imported.
                 text = message.content,
                 color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                 style = MaterialTheme.typography.bodyMedium

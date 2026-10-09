@@ -15,6 +15,8 @@ import org.rocs.osda.mobile.data.repository.AppealRepository
 import org.rocs.osda.mobile.data.repository.DocumentRepository
 import org.rocs.osda.mobile.data.repository.EnrollmentRepository
 import org.rocs.osda.mobile.data.repository.RecordRepository
+import org.rocs.osda.mobile.data.model.looksUnreadable
+import org.rocs.osda.mobile.data.repository.DocumentRepository
 import java.io.File
 
 enum class AppealFilter { ALL, PENDING, APPROVED, DENIED }
@@ -156,12 +158,10 @@ class AppealViewModel(
         _uiState.value = _uiState.value.copy(message = value, submitError = null)
     }
 
-    /** Uploads a camera-captured photo (written to disk by the camera intent). */
     fun uploadAttachmentFromFile(file: File, fileName: String, contentType: String) {
         uploadAttachment { documentRepository.uploadAppealLetter(file, fileName, contentType) }
     }
 
-    /** Uploads a file picked from the device (its bytes read via ContentResolver). */
     fun uploadAttachmentFromBytes(bytes: ByteArray, fileName: String, contentType: String) {
         uploadAttachment { documentRepository.uploadAppealLetter(bytes, fileName, contentType) }
     }
@@ -183,7 +183,6 @@ class AppealViewModel(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isUploadingAttachment = false,
-                    attachmentFileName = null,
                     attachmentDocumentId = null,
                     attachmentError = e.toUserMessage("Couldn't upload that file. Please try again.")
                 )
@@ -191,7 +190,6 @@ class AppealViewModel(
         }
     }
 
-    /** Called immediately when a file/photo is chosen, before the upload call resolves. */
     fun onAttachmentSelected(fileName: String) {
         _uiState.value = _uiState.value.copy(
             attachmentFileName = fileName,
@@ -204,7 +202,6 @@ class AppealViewModel(
     fun onAttachmentReadError() {
         _uiState.value = _uiState.value.copy(
             isUploadingAttachment = false,
-            attachmentFileName = null,
             attachmentDocumentId = null,
             attachmentError = "Couldn't read the selected file. Please try again."
         )

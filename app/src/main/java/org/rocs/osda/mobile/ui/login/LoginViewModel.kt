@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.rocs.osda.mobile.data.remote.toUserMessage
 import org.rocs.osda.mobile.data.repository.AuthRepository
+import org.rocs.osda.mobile.data.remote.toUserMessage
 
 data class LoginUiState(
     val username: String = "",
